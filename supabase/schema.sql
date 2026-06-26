@@ -62,14 +62,15 @@ create policy "own chaudieres" on chaudieres for all using (user_id = auth.uid()
 create policy "own photos" on photos for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Stockage des photos (plaques signalétiques + photos des pompes).
--- Lecture publique (les <img> du navigateur ne sont pas authentifiées),
--- mais écriture/suppression réservées aux utilisateurs connectés.
+-- Le bucket est public : les fichiers se téléchargent par URL directe sans
+-- passer par une policy (les <img> du navigateur ne sont pas authentifiées).
+-- Pas de policy "select" : l'app ne liste jamais les fichiers du bucket, et
+-- en ajouter une permettrait à n'importe qui d'énumérer tous les fichiers
+-- via l'API. Écriture/suppression réservées aux utilisateurs connectés.
 insert into storage.buckets (id, name, public)
 values ('photos', 'photos', true)
 on conflict (id) do nothing;
 
-create policy "public read photos bucket" on storage.objects
-  for select using (bucket_id = 'photos');
 create policy "auth upload photos bucket" on storage.objects
   for insert with check (bucket_id = 'photos' and auth.uid() is not null);
 create policy "auth delete photos bucket" on storage.objects
