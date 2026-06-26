@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  background-color: #0c0e10;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:focus-visible, button:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid #ff8a3d;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+.scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #3a4147; border-radius: 3px; }
+
+@layer components {
+  .modal-input {
+    width: 100%;
+    background: #0c0e10;
+    border: 1px solid #3a4147;
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 14px;
+    color: #ffffff;
+  }
+  .modal-input::placeholder { color: #6b7379; }
+}
