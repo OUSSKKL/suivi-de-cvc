@@ -1,9 +1,8 @@
 import { useState, useRef } from "react";
 import { Flame, Trash2 } from "lucide-react";
 
-// Carte chaudière : appui sur le texte = modifier la fiche, appui sur la
-// photo = l'agrandir, balayage gauche = supprimer.
-export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onEdit, onDelete, onChangeQuantite }) {
+// Carte chaudière : appui = agrandir la photo, balayage gauche = supprimer.
+export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onChangeQuantite }) {
   const DELETE_WIDTH = 88;
   const [translateX, setTranslateX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -48,15 +47,13 @@ export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onEdit, onDel
     setDragging(false);
     setTranslateX((curr) => (curr < -DELETE_WIDTH / 2 ? -DELETE_WIDTH : 0));
   }
-  // Un appui n'agit que si ce n'était pas un balayage ; si la carte est
-  // ouverte (révèle Supprimer), le premier appui la referme.
-  function guardedTap(action) {
+  function handleTap() {
     if (moved.current) return;
     if (translateX !== 0) {
       setTranslateX(0);
       return;
     }
-    action();
+    onOpenPhoto();
   }
 
   function bumpQuantite(delta) {
@@ -98,29 +95,18 @@ export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onEdit, onDel
         className="touch-pan-y select-none relative bg-[#15191c] border border-[#272d32] rounded-l-lg"
       >
         <div className="w-full p-3.5 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => guardedTap(c.photo ? onOpenPhoto : onEdit)}
-            className="shrink-0"
-            aria-label={c.photo ? "Agrandir la plaque" : "Modifier la fiche"}
-          >
+          <button type="button" onClick={handleTap} className="flex items-center gap-3 flex-1 min-w-0 text-left">
             {c.photo ? (
-              <img src={c.photo} alt="Plaque" className="w-9 h-9 rounded-lg object-cover border border-[#272d32]" />
+              <img src={c.photo} alt="Plaque" className="w-9 h-9 rounded-lg object-cover border border-[#272d32] shrink-0" />
             ) : (
-              <div className="w-9 h-9 rounded-lg bg-[#1a1f23] flex items-center justify-center border border-[#272d32]">
+              <div className="w-9 h-9 rounded-lg bg-[#1a1f23] flex items-center justify-center shrink-0 border border-[#272d32]">
                 <Flame size={16} className="text-[#2b7fff]" />
               </div>
             )}
-          </button>
-          <button
-            type="button"
-            onClick={() => guardedTap(onEdit)}
-            className="flex-1 min-w-0 text-left"
-          >
-            <p className="font-semibold text-[#ffffff] truncate">{c.marque} {c.modele}</p>
-            <p className="text-[#7d868d] text-[11px] mt-0.5">
-              {c.photo ? "Appuie pour modifier · photo à gauche" : "Appuie pour modifier"}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-[#ffffff] truncate">{c.marque} {c.modele}</p>
+              {c.photo && <p className="text-[#7d868d] text-[11px] mt-0.5">Appuie pour agrandir la plaque</p>}
+            </div>
           </button>
 
           <div className="flex items-center gap-1.5 shrink-0">

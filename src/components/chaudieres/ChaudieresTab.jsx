@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Flame, X, Download } from "lucide-react";
+import { Plus, Flame, X, Download, Trash2 } from "lucide-react";
 import * as db from "../../lib/db";
 import { downloadImage } from "../../lib/download";
 import EmptyState from "../shared/EmptyState";
@@ -11,7 +11,6 @@ import AddChaudiereModal from "./AddChaudiereModal";
 export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast }) {
   const [items, setItems] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
   const [viewingPhoto, setViewingPhoto] = useState(null);
 
@@ -42,26 +41,15 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
     }
   }
 
-  async function saveItem({ id, marque, modele, photo, photoFile }) {
+  async function saveItem({ marque, modele, photo, photoFile }) {
     try {
       let photoUrl = photo || null;
       if (photoFile) photoUrl = await db.uploadImage(photoFile, "chaudieres");
 
-      if (id) {
-        const old = items.find((i) => i.id === id);
-        const updated = await db.updateChaudiere(id, { marque, modele, photoUrl });
-        setItems(items.map((i) => (i.id === id ? updated : i)));
-        // Supprime l'ancienne image du stockage si elle a été remplacée ou
-        // retirée, pour ne pas accumuler de fichiers orphelins.
-        if (old?.photo && old.photo !== photoUrl) db.removeImage(old.photo);
-        showToast("Fiche mise à jour");
-      } else {
-        const created = await db.createChaudiere(siteId, { marque, modele, photoUrl });
-        setItems([created, ...items]);
-        showToast("Chaudière ajoutée");
-      }
+      const created = await db.createChaudiere(siteId, { marque, modele, photoUrl });
+      setItems([created, ...items]);
+      showToast("Chaudière ajoutée");
       setShowAdd(false);
-      setEditing(null);
     } catch (e) {
       showToast("⚠️ Erreur lors de l'enregistrement");
     }
@@ -78,6 +66,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
       showToast("⚠️ Erreur lors de la suppression");
     }
     setConfirmDel(null);
+    if (viewingPhoto?.id === id) setViewingPhoto(null);
   }
 
   if (items === null) return <LoadingRow />;
@@ -136,7 +125,6 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
             key={c.id}
             chaudiere={c}
             onOpenPhoto={() => c.photo && setViewingPhoto(c)}
-            onEdit={() => setEditing(c)}
             onDelete={() => setConfirmDel(c.id)}
             onChangeQuantite={(q) => changeQuantite(c.id, q)}
           />
@@ -144,9 +132,6 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
       </div>
 
       {showAdd && <AddChaudiereModal onCancel={() => setShowAdd(false)} onSave={saveItem} />}
-      {editing && (
-        <AddChaudiereModal item={editing} onCancel={() => setEditing(null)} onSave={saveItem} />
-      )}
       {confirmDel && (
         <ConfirmModal
           title="Supprimer cette fiche ?"
@@ -184,6 +169,13 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
                 >
                   <Download size={16} />
                   Télécharger
+                </button>
+                <button
+                  onClick={() => setConfirmDel(viewingPhoto.id)}
+                  className="flex items-center gap-1.5 bg-[#ff5d5d] hover:bg-[#ff7a7a] text-[#1a0606] font-semibold text-sm px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} />
+                  Supprimer
                 </button>
                 <button
                   onClick={() => setViewingPhoto(null)}
