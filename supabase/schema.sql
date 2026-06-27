@@ -40,6 +40,16 @@ create table if not exists photos (
   created_at timestamptz not null default now()
 );
 
+create table if not exists astreintes (
+  id text primary key default gen_random_uuid()::text,
+  user_id uuid references auth.users(id) on delete cascade default auth.uid(),
+  address text not null default '',
+  date date not null,
+  start_time text not null default '',
+  end_time text not null default '',
+  created_at timestamptz not null default now()
+);
+
 create index if not exists releves_site_id_idx on releves(site_id);
 create index if not exists chaudieres_site_id_idx on chaudieres(site_id);
 create index if not exists photos_site_id_idx on photos(site_id);
@@ -47,6 +57,7 @@ create index if not exists sites_user_id_idx on sites(user_id);
 create index if not exists releves_user_id_idx on releves(user_id);
 create index if not exists chaudieres_user_id_idx on chaudieres(user_id);
 create index if not exists photos_user_id_idx on photos(user_id);
+create index if not exists astreintes_user_id_idx on astreintes(user_id);
 
 -- RLS : chaque utilisateur connecté ne voit/modifie que ses propres
 -- données. Il n'y a pas de page d'inscription dans l'app : chaque compte
@@ -61,6 +72,9 @@ create policy "own sites" on sites for all using (user_id = auth.uid()) with che
 create policy "own releves" on releves for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "own chaudieres" on chaudieres for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "own photos" on photos for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+alter table astreintes enable row level security;
+create policy "own astreintes" on astreintes for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Stockage des photos (plaques signalétiques + photos des pompes).
 -- Le bucket est public : les fichiers se téléchargent par URL directe sans

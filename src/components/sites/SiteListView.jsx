@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Search, Table, Flame, Boxes, LogOut } from "lucide-react";
+import { Building2, Plus, Search, Table, Flame, Boxes, Clock, LogOut } from "lucide-react";
 import { sortSites } from "../../utils/sortSites";
 import * as db from "../../lib/db";
 import SiteCard from "./SiteCard";
 import AddSiteModal from "./AddSiteModal";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
@@ -52,11 +52,12 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
         </h1>
       </header>
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         {[
           { onClick: onShowTableau, icon: Table, label: "Relevés" },
           { onClick: onShowKits, icon: Boxes, label: "Kits" },
           { onClick: onShowChaudieres, icon: Flame, label: "Chaudières" },
+          { onClick: onShowAstreinte, icon: Clock, label: "Astreinte" },
         ].map(({ onClick, icon: Icon, label }) => (
           <button
             key={label}

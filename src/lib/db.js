@@ -194,3 +194,36 @@ export async function deletePhoto(id) {
   const { error } = await supabase.from("photos").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ---------- Astreinte (interventions hors site) ----------
+
+function mapAstreinte(row) {
+  return {
+    id: row.id,
+    address: row.address || "",
+    date: row.date,
+    startTime: row.start_time || "",
+    endTime: row.end_time || "",
+  };
+}
+
+export async function listAstreintes() {
+  const { data, error } = await supabase.from("astreintes").select("*");
+  if (error) throw error;
+  return data.map(mapAstreinte);
+}
+
+export async function addAstreinte({ address, date, startTime, endTime }) {
+  const { data, error } = await supabase
+    .from("astreintes")
+    .insert({ id: uid(), address, date, start_time: startTime, end_time: endTime })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapAstreinte(data);
+}
+
+export async function deleteAstreinte(id) {
+  const { error } = await supabase.from("astreintes").delete().eq("id", id);
+  if (error) throw error;
+}
