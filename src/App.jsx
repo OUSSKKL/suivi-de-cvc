@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import * as db from "./lib/db";
 import SiteListView from "./components/sites/SiteListView";
@@ -20,20 +20,30 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [confirmDeleteSite, setConfirmDeleteSite] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
+  const prevUserId = useRef(undefined);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      prevUserId.current = data.session?.user?.id ?? null;
+      setSession(data.session);
+    });
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      // Repart d'un état propre à chaque changement de session : évite
-      // d'afficher brièvement les données d'un autre compte si quelqu'un se
-      // déconnecte puis qu'un autre utilisateur se connecte sur le même appareil.
+      const newUserId = newSession?.user?.id ?? null;
       setSession(newSession);
-      setSites(null);
-      setActiveSiteId(null);
-      setView("list");
-      setSearch("");
-      window.history.replaceState({ view: "list", activeSiteId: null }, "");
+      // On ne repart d'un état vierge QUE si l'utilisateur change vraiment
+      // (connexion/déconnexion ou autre compte). Sur mobile, l'app perd et
+      // reprend le focus souvent, ce qui déclenche des rafraîchissements de
+      // jeton (TOKEN_REFRESHED) avec le MÊME utilisateur : inutile de tout
+      // recharger à chaque fois (ça provoquait un spinner et un re-tri).
+      if (prevUserId.current !== newUserId) {
+        prevUserId.current = newUserId;
+        setSites(null);
+        setActiveSiteId(null);
+        setView("list");
+        setSearch("");
+        window.history.replaceState({ view: "list", activeSiteId: null }, "");
+      }
     });
     return () => subscription.subscription.unsubscribe();
   }, []);

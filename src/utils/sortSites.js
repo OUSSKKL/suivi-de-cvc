@@ -7,6 +7,13 @@ export function sortSites(list) {
     const ao = a.order ?? Infinity;
     const bo = b.order ?? Infinity;
     if (ao !== bo) return ao - bo;
-    return (a.createdAt || "").localeCompare(b.createdAt || "");
+    const ac = a.createdAt || "";
+    const bc = b.createdAt || "";
+    if (ac !== bc) return ac.localeCompare(bc);
+    // Départage final sur l'id (unique, immuable) : garantit un ordre
+    // strictement déterministe même quand plusieurs sites ont la même date
+    // de création (cas des sites importés en une seule fois). Sans ça,
+    // l'ordre dépendait de la base et changeait après une modification.
+    return a.id.localeCompare(b.id);
   });
 }
