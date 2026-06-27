@@ -165,17 +165,17 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
                       `plaque-${(viewingPhoto.marque || "chaudiere")}-${(viewingPhoto.modele || "")}`.replace(/\s+/g, "_") + ".jpg"
                     )
                   }
-                  className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-3.5 py-2 rounded-lg"
+                  className="p-2 text-[#2b7fff] hover:bg-white/10 rounded-lg"
+                  aria-label="Télécharger"
                 >
-                  <Download size={16} />
-                  Télécharger
+                  <Download size={18} />
                 </button>
                 <button
                   onClick={() => setConfirmDel(viewingPhoto.id)}
-                  className="flex items-center gap-1.5 bg-[#ff5d5d] hover:bg-[#ff7a7a] text-[#1a0606] font-semibold text-sm px-3.5 py-2 rounded-lg transition-colors"
+                  className="p-2 text-[#ff8a8a] hover:bg-white/10 rounded-lg"
+                  aria-label="Supprimer"
                 >
-                  <Trash2 size={16} />
-                  Supprimer
+                  <Trash2 size={18} />
                 </button>
                 <button
                   onClick={() => setViewingPhoto(null)}
