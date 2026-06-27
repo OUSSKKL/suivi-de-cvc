@@ -25,6 +25,7 @@ create table if not exists chaudieres (
   site_id text not null references sites(id) on delete cascade,
   marque text not null default '',
   modele text not null default '',
+  quantite integer not null default 1,
   photo_url text,
   created_at timestamptz not null default now()
 );

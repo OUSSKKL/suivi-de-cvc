@@ -48,8 +48,12 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
       if (photoFile) photoUrl = await db.uploadImage(photoFile, "chaudieres");
 
       if (id) {
+        const old = items.find((i) => i.id === id);
         const updated = await db.updateChaudiere(id, { marque, modele, photoUrl });
         setItems(items.map((i) => (i.id === id ? updated : i)));
+        // Supprime l'ancienne image du stockage si elle a été remplacée ou
+        // retirée, pour ne pas accumuler de fichiers orphelins.
+        if (old?.photo && old.photo !== photoUrl) db.removeImage(old.photo);
         showToast("Fiche mise à jour");
       } else {
         const created = await db.createChaudiere(siteId, { marque, modele, photoUrl });
@@ -132,6 +136,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
             key={c.id}
             chaudiere={c}
             onOpenPhoto={() => c.photo && setViewingPhoto(c)}
+            onEdit={() => setEditing(c)}
             onDelete={() => setConfirmDel(c.id)}
             onChangeQuantite={(q) => changeQuantite(c.id, q)}
           />

@@ -1,5 +1,3 @@
-export const ENERGIES = ["Gaz", "Fioul", "Électricité", "Eau", "Autre"];
-
 // Marques connues + modèles courants en France. La saisie reste libre.
 export const MARQUES = ["Viessmann", "De Dietrich", "Atlantic"];
 
