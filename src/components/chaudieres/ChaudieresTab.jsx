@@ -31,6 +31,17 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
     onKitsChange(Math.max(0, (kits || 0) + delta));
   }
 
+  async function changeQuantite(id, quantite) {
+    const prev = items;
+    setItems(items.map((i) => (i.id === id ? { ...i, quantite } : i)));
+    try {
+      await db.updateChaudiereQuantite(id, quantite);
+    } catch (e) {
+      setItems(prev);
+      showToast("⚠️ Erreur lors de la mise à jour de la quantité");
+    }
+  }
+
   async function saveItem({ id, marque, modele, photo, photoFile }) {
     try {
       let photoUrl = photo || null;
@@ -67,6 +78,8 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
 
   if (items === null) return <LoadingRow />;
 
+  const totalQuantite = items.reduce((sum, i) => sum + (i.quantite || 1), 0);
+
   return (
     <div>
       <div className="bg-[#15191c] border border-[#272d32] rounded-xl p-4 mb-4">
@@ -82,7 +95,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
           <span className="font-display text-4xl font-extrabold text-white tabular-nums">{kits || 0}</span>
           <button
             onClick={() => changeKits(1)}
-            className="w-11 h-11 rounded-lg bg-[#ff8a3d] text-[#1a1006] text-2xl font-semibold flex items-center justify-center active:bg-[#ff9d5c]"
+            className="w-11 h-11 rounded-lg bg-[#2b7fff] text-[#ffffff] text-2xl font-semibold flex items-center justify-center active:bg-[#5a9eff]"
             aria-label="Ajouter un kit"
           >
             +
@@ -92,7 +105,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
 
       <div className="flex items-center justify-between mb-4">
         <p className="text-[#aab3ba] text-sm">
-          {items.length} chaudière{items.length !== 1 ? "s" : ""}
+          {totalQuantite} chaudière{totalQuantite !== 1 ? "s" : ""}
         </p>
         <button
           onClick={() => setShowAdd(true)}
@@ -120,6 +133,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
             chaudiere={c}
             onOpenPhoto={() => c.photo && setViewingPhoto(c)}
             onDelete={() => setConfirmDel(c.id)}
+            onChangeQuantite={(q) => changeQuantite(c.id, q)}
           />
         ))}
       </div>
@@ -161,7 +175,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
                       `plaque-${(viewingPhoto.marque || "chaudiere")}-${(viewingPhoto.modele || "")}`.replace(/\s+/g, "_") + ".jpg"
                     )
                   }
-                  className="flex items-center gap-1.5 bg-[#ff8a3d] hover:bg-[#ff9d5c] text-[#1a1006] font-semibold text-sm px-3.5 py-2 rounded-lg"
+                  className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-3.5 py-2 rounded-lg"
                 >
                   <Download size={16} />
                   Télécharger

@@ -25,6 +25,7 @@ function mapChaudiere(row) {
     marque: row.marque || "",
     modele: row.modele || "",
     photo: row.photo_url || "",
+    quantite: row.quantite ?? 1,
   };
 }
 
@@ -76,6 +77,11 @@ export async function createSite(name, address) {
 
 export async function deleteSite(id) {
   const { error } = await supabase.from("sites").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateSiteName(id, name) {
+  const { error } = await supabase.from("sites").update({ name }).eq("id", id);
   if (error) throw error;
 }
 
@@ -154,6 +160,11 @@ export async function updateChaudiere(id, { marque, modele, photoUrl }) {
 
 export async function deleteChaudiere(id) {
   const { error } = await supabase.from("chaudieres").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateChaudiereQuantite(id, quantite) {
+  const { error } = await supabase.from("chaudieres").update({ quantite }).eq("id", id);
   if (error) throw error;
 }
 

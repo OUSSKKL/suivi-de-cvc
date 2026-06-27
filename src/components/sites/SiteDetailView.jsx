@@ -15,9 +15,9 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
       <div className="sticky top-0 z-20 bg-[#0c0e10]/95 backdrop-blur border-b border-[#1a1f23] px-4 pt-4 pb-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-[#c2c8cd] text-sm font-medium mb-3 -ml-1 px-1 py-1"
+          className="group flex items-center gap-1 text-[#c2c8cd] hover:text-white text-sm font-medium mb-3 -ml-1 px-1 py-1 transition-colors"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
           Tous les sites
         </button>
         <h1 className="font-display text-2xl font-extrabold text-white truncate">{site.name}</h1>
@@ -34,11 +34,11 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
                 onClick={() => setTab(t.id)}
                 className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                   active
-                    ? "text-[#ff8a3d] border-[#ff8a3d]"
-                    : "text-[#929ba2] border-transparent hover:text-[#e4e7ea]"
+                    ? "text-[#2b7fff] border-[#2b7fff]"
+                    : "text-[#929ba2] border-transparent hover:text-[#e4e7ea] hover:border-[#3a4147]"
                 }`}
               >
-                <Icon size={15} />
+                <Icon size={15} className={active ? "drop-shadow-[0_0_6px_rgba(43,127,255,0.4)]" : ""} />
                 {t.label}
               </button>
             );

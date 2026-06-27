@@ -1,46 +1,57 @@
-import { ChevronLeft, Flame } from "lucide-react";
+import { ChevronLeft, Boxes, Building2 } from "lucide-react";
 import { sortSites } from "../../utils/sortSites";
+import EmptyState from "../shared/EmptyState";
 
 export default function KitsTableView({ sites, onBack }) {
   const sortedSites = sortSites(sites);
-  const total = sites.reduce((sum, s) => sum + (s.kits || 0), 0);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pb-28 pt-4">
+    <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 animate-fade-in">
       <button
         onClick={onBack}
-        className="flex items-center gap-1 text-[#c2c8cd] text-sm font-medium mb-3 -ml-1 px-1 py-1"
+        className="group flex items-center gap-1 text-[#c2c8cd] hover:text-white text-sm font-medium mb-4 -ml-1 px-1 py-1 transition-colors"
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
         Retour
       </button>
-      <h1 className="font-display text-2xl font-extrabold text-white flex items-center gap-2 mb-1">
-        <Flame size={20} className="text-[#ff8a3d]" />
-        Nombre de kits par site
-      </h1>
-      <p className="text-[#929ba2] text-xs mb-4">
-        Total : <span className="text-white font-semibold">{total}</span> kit{total !== 1 ? "s" : ""} sur l'ensemble des sites. Modifie le nombre dans l'onglet Chaudières de chaque site.
-      </p>
 
-      <div className="border border-[#272d32] rounded-xl overflow-hidden">
-        <div className="flex items-center bg-[#1a1f23] px-4 py-2.5 border-b border-[#272d32]">
-          <span className="flex-1 text-[#929ba2] text-xs font-semibold uppercase tracking-wide">Site</span>
-          <span className="text-[#929ba2] text-xs font-semibold uppercase tracking-wide">Nombre de kits</span>
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-surface-gradient border border-[#272d32] flex items-center justify-center shrink-0">
+          <Boxes size={17} className="text-[#2b7fff]" />
         </div>
-        {sortedSites.map((site, i) => (
-          <div
-            key={site.id}
-            className={`flex items-center px-4 py-3 ${
-              i !== sortedSites.length - 1 ? "border-b border-[#272d32]" : ""
-            }`}
-          >
-            <span className="flex-1 text-white text-sm truncate pr-3">{site.name}</span>
-            <span className="font-display font-bold text-lg text-[#ff8a3d] tabular-nums min-w-[2ch] text-right">
-              {site.kits || 0}
-            </span>
-          </div>
-        ))}
+        <h1 className="font-display text-2xl font-extrabold text-white">Kits par site</h1>
       </div>
+
+      <p className="text-[#7d868d] text-xs mb-5">Modifiable depuis l'onglet Chaudières de chaque site.</p>
+
+      {sortedSites.length === 0 ? (
+        <EmptyState
+          icon={Boxes}
+          title="Aucun site"
+          message="Ajoute un site depuis l'écran principal pour suivre ses kits."
+          action={onBack}
+          actionLabel="Retour aux sites"
+        />
+      ) : (
+        <div className="border border-[#272d32] rounded-xl overflow-hidden">
+          {sortedSites.map((site, i) => (
+            <div
+              key={site.id}
+              className={`flex items-center gap-3 px-4 py-3 hover:bg-[#15191c] transition-colors ${
+                i !== sortedSites.length - 1 ? "border-b border-[#272d32]" : ""
+              }`}
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2b7fff]/20 to-[#2b7fff]/5 ring-1 ring-[#2b7fff]/15 flex items-center justify-center shrink-0">
+                <Building2 size={14} className="text-[#2b7fff]" />
+              </div>
+              <span className="flex-1 text-white text-sm font-medium truncate">{site.name}</span>
+              <span className="font-display font-bold text-sm text-[#2b7fff] bg-[#2b7fff]/10 tabular-nums min-w-[2.5ch] text-center px-2.5 py-1 rounded-full shrink-0">
+                {site.kits || 0}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

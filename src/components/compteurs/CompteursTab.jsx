@@ -65,7 +65,7 @@ export default function CompteursTab({ siteId, showToast }) {
         </div>
         <button
           onClick={() => setShowDateModal(true)}
-          className="flex items-center gap-1.5 bg-[#ff8a3d] hover:bg-[#ff9d5c] text-[#1a1006] font-semibold text-sm px-4 py-3 rounded-lg transition-colors shrink-0"
+          className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-3 rounded-lg shrink-0"
         >
           <Gauge size={16} strokeWidth={2.5} />
           Relevé
@@ -92,7 +92,7 @@ export default function CompteursTab({ siteId, showToast }) {
               className="bg-[#15191c] border border-[#272d32] rounded-lg px-3.5 py-3 flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-2.5">
-                <Gauge size={15} className="text-[#ff8a3d]" />
+                <Gauge size={15} className="text-[#2b7fff]" />
                 <span className="font-medium text-[#ffffff] text-sm">{formatDate(r.date)}</span>
               </div>
               <button

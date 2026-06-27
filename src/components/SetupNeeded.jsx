@@ -4,7 +4,7 @@ export default function SetupNeeded() {
   return (
     <div className="min-h-screen bg-[#0c0e10] flex items-center justify-center px-4">
       <div className="max-w-md border border-[#272d32] rounded-xl p-6 bg-[#15191c]">
-        <div className="flex items-center gap-2 text-[#ff8a3d] mb-3">
+        <div className="flex items-center gap-2 text-[#2b7fff] mb-3">
           <Database size={18} />
           <p className="font-semibold">Base de données non configurée</p>
         </div>

@@ -1,7 +1,7 @@
 // Statut (couleur) d'un site selon l'ancienneté de son dernier relevé.
 export const STATUS_COLORS = {
   red: "#ff5d5d",
-  orange: "#ff8a3d",
+  orange: "#f5a524",
   green: "#22c55e",
 };
 

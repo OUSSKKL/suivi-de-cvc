@@ -6,12 +6,24 @@ html, body, #root {
   background-color: #0c0e10;
 }
 
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Halo orange très subtil en haut pour donner de la profondeur au fond plat */
+  background-image:
+    radial-gradient(120% 60% at 50% -10%, rgba(43, 127, 255, 0.06), transparent 60%),
+    radial-gradient(80% 50% at 100% 0%, rgba(43, 127, 255, 0.04), transparent 55%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
 input:focus-visible, button:focus-visible, textarea:focus-visible, select:focus-visible {
-  outline: 2px solid #ff8a3d;
+  outline: 2px solid #2b7fff;
   outline-offset: 2px;
 }
 
@@ -21,16 +33,34 @@ input:focus-visible, button:focus-visible, textarea:focus-visible, select:focus-
 
 .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: #3a4147; border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #4b545b; }
 
 @layer components {
   .modal-input {
     width: 100%;
     background: #0c0e10;
     border: 1px solid #3a4147;
-    border-radius: 8px;
-    padding: 9px 11px;
+    border-radius: 10px;
+    padding: 10px 12px;
     font-size: 14px;
     color: #ffffff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .modal-input::placeholder { color: #6b7379; }
+  .modal-input:focus {
+    border-color: #2b7fff;
+    box-shadow: 0 0 0 3px rgba(43, 127, 255, 0.12);
+    outline: none;
+  }
+
+  /* Bouton d'action principal (CTA orange) avec dégradé + lueur douce */
+  .btn-accent {
+    background-image: linear-gradient(135deg, #5a9eff 0%, #2b7fff 45%, #1565e0 100%);
+    color: #ffffff;
+    box-shadow: 0 6px 18px -8px rgba(43, 127, 255, 0.55);
+    transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  }
+  .btn-accent:hover { filter: brightness(1.06); box-shadow: 0 8px 22px -8px rgba(43, 127, 255, 0.65); }
+  .btn-accent:active { transform: translateY(1px); }
+  .btn-accent:disabled { filter: none; opacity: 0.5; box-shadow: none; }
 }

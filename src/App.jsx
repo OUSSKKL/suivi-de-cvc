@@ -83,11 +83,17 @@ export default function App() {
     window.history.back();
   }
 
-  async function addSite(name, address) {
-    const site = await db.createSite(name.trim(), address.trim());
+  async function addSite(name) {
+    const site = await db.createSite(name.trim(), "");
     setSites([...sites, site]);
     showToast("Site ajouté");
     return site.id;
+  }
+
+  async function editSite(id, name) {
+    setSites(sites.map((s) => (s.id === id ? { ...s, name: name.trim() } : s)));
+    await db.updateSiteName(id, name.trim());
+    showToast("Site modifié");
   }
 
   async function deleteSite(id) {
@@ -113,7 +119,8 @@ export default function App() {
 
   if (session === undefined) {
     return (
-      <div className="min-h-screen bg-[#0c0e10] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0c0e10] flex flex-col items-center justify-center gap-3">
+        <div className="w-7 h-7 rounded-full border-2 border-[#272d32] border-t-[#2b7fff] animate-spin" />
         <div className="text-[#c2c8cd] text-sm font-mono tracking-wide">Chargement…</div>
       </div>
     );
@@ -133,7 +140,7 @@ export default function App() {
           </p>
           <button
             onClick={loadSites}
-            className="bg-[#ff8a3d] hover:bg-[#ff9d5c] text-[#1a1006] font-semibold text-sm px-4 py-2.5 rounded-lg"
+            className="btn-accent font-semibold text-sm px-4 py-2.5 rounded-lg"
           >
             Réessayer
           </button>
@@ -144,7 +151,8 @@ export default function App() {
 
   if (sites === null) {
     return (
-      <div className="min-h-screen bg-[#0c0e10] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0c0e10] flex flex-col items-center justify-center gap-3">
+        <div className="w-7 h-7 rounded-full border-2 border-[#272d32] border-t-[#2b7fff] animate-spin" />
         <div className="text-[#c2c8cd] text-sm font-mono tracking-wide">Chargement…</div>
       </div>
     );
@@ -165,6 +173,7 @@ export default function App() {
           setSearch={setSearch}
           onOpen={(id) => navigateTo("site", id)}
           onAdd={addSite}
+          onEditSite={editSite}
           onDelete={(id) => setConfirmDeleteSite(id)}
           onShowTableau={() => navigateTo("tableau")}
           onShowKits={() => navigateTo("kits")}
@@ -202,7 +211,8 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-[#1f2428] border border-[#3a4147] text-[#ffffff] text-sm px-4 py-2.5 rounded-lg shadow-lg z-50 font-medium">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-[#1f2428] border border-[#3a4147] text-[#ffffff] text-sm px-4 py-2.5 rounded-lg shadow-lift z-50 font-medium animate-slide-up flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#2b7fff]" />
           {toast}
         </div>
       )}

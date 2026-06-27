@@ -50,7 +50,7 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
                 onClick={() => pickMarque(m)}
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
                   marqueKey === m
-                    ? "bg-[#ff8a3d] text-[#1a1006] border-[#ff8a3d]"
+                    ? "bg-[#2b7fff] text-[#ffffff] border-[#2b7fff]"
                     : "bg-[#1a1f23] text-[#e4e7ea] border-[#3a4147] hover:bg-[#272d32]"
                 }`}
               >
@@ -89,7 +89,7 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
                   onClick={() => setModele(m)}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
                     modele === m
-                      ? "bg-[#ff8a3d] text-[#1a1006] border-[#ff8a3d]"
+                      ? "bg-[#2b7fff] text-[#ffffff] border-[#2b7fff]"
                       : "bg-[#1a1f23] text-[#c2c8cd] border-[#272d32] hover:bg-[#272d32]"
                   }`}
                 >
@@ -120,7 +120,7 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
                 onClick={() => cameraRef.current?.click()}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#1a1f23] hover:bg-[#272d32] border border-[#3a4147] text-white text-sm font-medium px-3 py-2.5 rounded-lg transition-colors"
               >
-                <Camera size={15} className="text-[#ff8a3d]" />
+                <Camera size={15} className="text-[#2b7fff]" />
                 Prendre
               </button>
               <button
@@ -128,7 +128,7 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
                 onClick={() => galleryRef.current?.click()}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#1a1f23] hover:bg-[#272d32] border border-[#3a4147] text-white text-sm font-medium px-3 py-2.5 rounded-lg transition-colors"
               >
-                <ImageIcon size={15} className="text-[#ff8a3d]" />
+                <ImageIcon size={15} className="text-[#2b7fff]" />
                 Galerie
               </button>
             </div>

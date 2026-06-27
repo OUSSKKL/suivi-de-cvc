@@ -170,7 +170,7 @@ export default function PhotosTab({ siteId, showToast }) {
                 }}
                 className="w-full flex items-center gap-3 bg-[#1a1f23] hover:bg-[#272d32] border border-[#3a4147] text-white font-medium text-sm px-4 py-3.5 rounded-lg transition-colors text-left"
               >
-                <Camera size={16} className="text-[#ff8a3d] shrink-0" />
+                <Camera size={16} className="text-[#2b7fff] shrink-0" />
                 {cat}
               </button>
             ))}
@@ -194,7 +194,7 @@ export default function PhotosTab({ siteId, showToast }) {
                 setShowSourceChoice(false);
                 setTimeout(() => cameraInputRef.current?.click(), 50);
               }}
-              className="w-full flex items-center gap-3 bg-[#ff8a3d] hover:bg-[#ff9d5c] text-[#1a1006] font-semibold text-sm px-4 py-3.5 rounded-lg transition-colors text-left"
+              className="btn-accent w-full flex items-center gap-3 font-semibold text-sm px-4 py-3.5 rounded-lg text-left"
             >
               <Camera size={17} className="shrink-0" />
               Prendre une photo
@@ -206,7 +206,7 @@ export default function PhotosTab({ siteId, showToast }) {
               }}
               className="w-full flex items-center gap-3 bg-[#1a1f23] hover:bg-[#272d32] border border-[#3a4147] text-white font-semibold text-sm px-4 py-3.5 rounded-lg transition-colors text-left"
             >
-              <ImageIcon size={17} className="text-[#ff8a3d] shrink-0" />
+              <ImageIcon size={17} className="text-[#2b7fff] shrink-0" />
               Choisir dans la galerie
             </button>
           </div>
@@ -271,7 +271,7 @@ export default function PhotosTab({ siteId, showToast }) {
               <div className="flex gap-2">
                 <button
                   onClick={() => downloadImage(viewing.url, `${(viewing.label || "photo").replace(/\s+/g, "_")}.jpg`)}
-                  className="p-2 text-[#ff8a3d] hover:bg-white/10 rounded-lg"
+                  className="p-2 text-[#2b7fff] hover:bg-white/10 rounded-lg"
                   aria-label="Télécharger"
                 >
                   <Download size={18} />

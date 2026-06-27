@@ -12,7 +12,7 @@ export default function ModalActions({ onCancel, onSave, disabled, saveLabel }) 
       <button
         onClick={onSave}
         disabled={disabled}
-        className="flex-1 py-2.5 rounded-lg bg-[#ff8a3d] text-[#1a1006] font-semibold text-sm hover:bg-[#ff9d5c] disabled:opacity-40 disabled:hover:bg-[#ff8a3d] transition-colors flex items-center justify-center gap-1.5"
+        className="btn-accent flex-1 py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5"
       >
         <Save size={14} />
         {saveLabel}

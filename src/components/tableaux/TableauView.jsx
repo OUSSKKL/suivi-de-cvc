@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, Table } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Table } from "lucide-react";
 import * as db from "../../lib/db";
 import { sortSites } from "../../utils/sortSites";
 import { MOIS, MOIS_COURT } from "../../data/constants";
 import LoadingRow from "../shared/LoadingRow";
+import EmptyState from "../shared/EmptyState";
 
 export default function TableauView({ sites, onBack }) {
   const [readingsBySite, setReadingsBySite] = useState(null);
@@ -63,57 +64,98 @@ export default function TableauView({ sites, onBack }) {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-20 bg-[#0c0e10] border-b border-[#1a1f23] px-4 pt-4 pb-3">
+    <div className="min-h-screen animate-fade-in">
+      <div className="sticky top-0 z-20 bg-[#0c0e10]/95 backdrop-blur border-b border-[#1a1f23] px-4 pt-4 pb-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-[#c2c8cd] text-sm font-medium mb-3 -ml-1 px-1 py-1"
+          className="group flex items-center gap-1 text-[#c2c8cd] hover:text-white text-sm font-medium mb-3 -ml-1 px-1 py-1 transition-colors"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
           Retour
         </button>
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h1 className="font-display text-2xl font-extrabold text-white flex items-center gap-2">
-            <Table size={20} className="text-[#ff8a3d]" />
-            Tableau des relevés
-          </h1>
-          <div className="flex gap-2">
-            <select
-              value={selMonth}
-              onChange={(e) => setSelMonth(Number(e.target.value))}
-              className="bg-[#15191c] border border-[#3a4147] text-white rounded-lg px-3 py-2 text-sm font-semibold"
-              aria-label="Mois"
+
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-surface-gradient border border-[#272d32] flex items-center justify-center shrink-0">
+              <Table size={17} className="text-[#2b7fff]" />
+            </div>
+            <h1 className="font-display text-2xl font-extrabold text-white">Tableau des relevés</h1>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setEndIndex(endIndex - 1)}
+              className="p-2 rounded-lg bg-[#15191c] border border-[#272d32] hover:border-[#3a4147] hover:bg-[#1a1f23] text-[#c2c8cd] hover:text-white transition-colors"
+              aria-label="Mois précédent"
             >
-              {MOIS.map((m, i) => (
-                <option key={i} value={i}>{m}</option>
-              ))}
-            </select>
-            <select
-              value={selYear}
-              onChange={(e) => setSelYear(Number(e.target.value))}
-              className="bg-[#15191c] border border-[#3a4147] text-white rounded-lg px-3 py-2 text-sm font-semibold"
-              aria-label="Année"
+              <ChevronLeft size={15} />
+            </button>
+
+            <div className="relative">
+              <select
+                value={selMonth}
+                onChange={(e) => setSelMonth(Number(e.target.value))}
+                className="appearance-none bg-[#15191c] border border-[#272d32] hover:border-[#3a4147] focus:border-[#2b7fff] text-white rounded-lg pl-3 pr-7 py-2 text-sm font-semibold transition-colors focus:outline-none cursor-pointer"
+                aria-label="Mois"
+              >
+                {MOIS.map((m, i) => (
+                  <option key={i} value={i}>{m}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7d868d] pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={selYear}
+                onChange={(e) => setSelYear(Number(e.target.value))}
+                className="appearance-none bg-[#15191c] border border-[#272d32] hover:border-[#3a4147] focus:border-[#2b7fff] text-white rounded-lg pl-3 pr-7 py-2 text-sm font-semibold transition-colors focus:outline-none cursor-pointer"
+                aria-label="Année"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7d868d] pointer-events-none" />
+            </div>
+
+            <button
+              onClick={() => setEndIndex(endIndex + 1)}
+              className="p-2 rounded-lg bg-[#15191c] border border-[#272d32] hover:border-[#3a4147] hover:bg-[#1a1f23] text-[#c2c8cd] hover:text-white transition-colors"
+              aria-label="Mois suivant"
             >
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+              <ChevronRight size={15} />
+            </button>
           </div>
         </div>
-        <p className="text-[#929ba2] text-xs mt-2">
-          Vert = relevé fait. Gauche = 1ʳᵉ quinzaine (1–15), droite = 2ᵉ quinzaine (16–fin).
-        </p>
+
+        <div className="flex items-center gap-1.5 text-[#929ba2] text-xs mt-2.5">
+          <span className="w-2.5 h-2.5 rounded-[3px] bg-[#22c55e] shrink-0" />
+          Relevé effectué
+          <span className="text-[#3a4147] mx-0.5">·</span>
+          Gauche = 1ʳᵉ quinzaine (1–15), droite = 2ᵉ quinzaine (16–fin)
+        </div>
       </div>
 
-      {readingsBySite === null ? (
+      {sortedSites.length === 0 ? (
+        <div className="px-4 pt-8">
+          <EmptyState
+            icon={Table}
+            title="Aucun site à afficher"
+            message="Ajoute un site depuis l'écran principal pour suivre ses relevés."
+            action={onBack}
+            actionLabel="Retour aux sites"
+          />
+        </div>
+      ) : readingsBySite === null ? (
         <LoadingRow />
       ) : (
-        <div className="overflow-x-auto scrollbar-thin pb-10">
+        <div className="mx-4 mt-4 mb-10 border border-[#272d32] rounded-xl overflow-x-auto scrollbar-thin">
           <table className="border-collapse" style={{ minWidth: "max-content" }}>
             <thead>
               <tr>
                 <th
-                  className="sticky left-0 z-10 bg-[#0c0e10] text-left text-[#929ba2] text-xs font-semibold uppercase tracking-wide px-3 py-2 border-b border-[#272d32]"
+                  className="sticky left-0 z-10 bg-[#0c0e10] border-r border-[#1a1f23] text-left text-[#929ba2] text-xs font-semibold uppercase tracking-wide px-3 py-2.5 border-b border-[#272d32]"
                   style={{ minWidth: 160 }}
                 >
                   Site
@@ -122,18 +164,18 @@ export default function TableauView({ sites, onBack }) {
                   <th
                     key={mm.abs}
                     colSpan={2}
-                    className="text-center text-[#c2c8cd] text-xs font-semibold px-1 py-2 border-b border-l border-[#272d32]"
+                    className="text-center text-[#c2c8cd] text-xs font-semibold px-1 py-2.5 border-b border-l border-[#272d32]"
                   >
                     {MOIS_COURT[mm.month]} {String(mm.year).slice(2)}
                   </th>
                 ))}
               </tr>
               <tr>
-                <th className="sticky left-0 z-10 bg-[#0c0e10] border-b border-[#272d32]"></th>
+                <th className="sticky left-0 z-10 bg-[#0c0e10] border-r border-[#1a1f23] border-b border-[#272d32]"></th>
                 {shownMonths.map((mm) => (
                   <React.Fragment key={mm.abs}>
-                    <th className="text-center text-[#7d868d] text-[10px] font-medium px-1 py-1 border-b border-l border-[#272d32] w-9">1–15</th>
-                    <th className="text-center text-[#7d868d] text-[10px] font-medium px-1 py-1 border-b border-l border-[#3a4147] w-9">16+</th>
+                    <th className="text-center text-[#7d868d] text-[10px] font-medium px-1 py-1.5 border-b border-l border-[#272d32] w-9">1–15</th>
+                    <th className="text-center text-[#7d868d] text-[10px] font-medium px-1 py-1.5 border-b border-l border-[#3a4147] w-9">16+</th>
                   </React.Fragment>
                 ))}
               </tr>
@@ -142,25 +184,34 @@ export default function TableauView({ sites, onBack }) {
               {sortedSites.map((site) => {
                 const cells = cellsForSite(site.id);
                 return (
-                  <tr key={site.id}>
+                  <tr key={site.id} className="group">
                     <td
-                      className="sticky left-0 z-10 bg-[#0c0e10] text-white text-xs font-medium px-3 py-2 border-b border-[#272d32] whitespace-nowrap"
+                      className="sticky left-0 z-10 bg-[#0c0e10] group-hover:bg-[#15191c] border-r border-[#1a1f23] text-white text-xs font-medium px-3 py-2 border-b border-[#272d32] whitespace-nowrap transition-colors"
                       style={{ minWidth: 160, maxWidth: 220 }}
                     >
                       <span className="block truncate">{site.name}</span>
                     </td>
                     {shownMonths.map((mm) => (
                       <React.Fragment key={mm.abs}>
-                        <td
-                          className={`border-b border-l border-[#272d32] w-9 h-9 ${
-                            cells.has(`${mm.abs}-0`) ? "bg-[#22c55e]" : ""
-                          }`}
-                        ></td>
-                        <td
-                          className={`border-b border-l border-[#3a4147] w-9 h-9 ${
-                            cells.has(`${mm.abs}-1`) ? "bg-[#22c55e]" : ""
-                          }`}
-                        ></td>
+                        {[0, 1].map((q) => {
+                          const done = cells.has(`${mm.abs}-${q}`);
+                          return (
+                            <td
+                              key={q}
+                              className={`border-b border-l ${q === 1 ? "border-[#3a4147]" : "border-[#272d32]"} w-9 h-9 p-0 ${
+                                done ? "" : "group-hover:bg-white/[0.03] transition-colors"
+                              }`}
+                            >
+                              {done && (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <div className="w-6 h-6 rounded-md bg-[#22c55e] flex items-center justify-center">
+                                    <Check size={13} strokeWidth={3} className="text-[#06210f]" />
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
                       </React.Fragment>
                     ))}
                   </tr>
