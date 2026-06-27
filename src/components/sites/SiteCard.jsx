@@ -1,11 +1,9 @@
 import { useState, useRef } from "react";
-import { Building2, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Building2, ChevronRight, Trash2 } from "lucide-react";
 import { releveStatus, STATUS_COLORS, daysSince } from "../../utils/releveStatus";
 
-export default function SiteCard({ site, lastReading, showStatus, onOpen, onEdit, onDelete }) {
-  const EDIT_WIDTH = 84;
-  const DELETE_WIDTH = 84;
-  const ACTIONS_WIDTH = EDIT_WIDTH + DELETE_WIDTH;
+export default function SiteCard({ site, lastReading, showStatus, onOpen, onDelete }) {
+  const ACTIONS_WIDTH = 96;
   const status = showStatus ? releveStatus(lastReading) : null;
   const statusLabel = !lastReading
     ? "Jamais relevé"
@@ -74,17 +72,6 @@ export default function SiteCard({ site, lastReading, showStatus, onOpen, onEdit
     <div className="relative rounded-xl overflow-hidden bg-[#15191c]">
       {translateX < 0 && (
         <div className="absolute inset-y-0 right-0 flex items-stretch" style={{ width: ACTIONS_WIDTH }}>
-          <button
-            onClick={() => {
-              setTranslateX(0);
-              onEdit();
-            }}
-            className="flex-1 bg-[#2b7fff] hover:bg-[#5a9eff] text-white flex flex-col items-center justify-center gap-1 transition-colors"
-            aria-label="Modifier le site"
-          >
-            <Pencil size={17} />
-            <span className="text-[11px] font-semibold">Modifier</span>
-          </button>
           <button
             onClick={() => {
               setTranslateX(0);

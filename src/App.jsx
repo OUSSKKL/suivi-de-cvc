@@ -183,7 +183,6 @@ export default function App() {
           setSearch={setSearch}
           onOpen={(id) => navigateTo("site", id)}
           onAdd={addSite}
-          onEditSite={editSite}
           onDelete={(id) => setConfirmDeleteSite(id)}
           onShowTableau={() => navigateTo("tableau")}
           onShowKits={() => navigateTo("kits")}
@@ -208,6 +207,7 @@ export default function App() {
           onBack={goBack}
           showToast={showToast}
           onKitsChange={(kits) => updateKits(activeSite.id, kits)}
+          onRename={(name) => editSite(activeSite.id, name)}
         />
       )}
 

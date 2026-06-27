@@ -1,9 +1,12 @@
-import { Gauge, Flame, Camera, ChevronLeft } from "lucide-react";
+import { useState } from "react";
+import { Gauge, Flame, Camera, ChevronLeft, Pencil } from "lucide-react";
 import CompteursTab from "../compteurs/CompteursTab";
 import ChaudieresTab from "../chaudieres/ChaudieresTab";
 import PhotosTab from "../photos/PhotosTab";
+import AddSiteModal from "./AddSiteModal";
 
-export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange }) {
+export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange, onRename }) {
+  const [editing, setEditing] = useState(false);
   const tabs = [
     { id: "compteurs", label: "Compteurs", icon: Gauge },
     { id: "chaudieres", label: "Chaudières", icon: Flame },
@@ -20,7 +23,17 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
           <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
           Tous les sites
         </button>
-        <h1 className="font-display text-2xl font-extrabold text-white truncate">{site.name}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-display text-2xl font-extrabold text-white truncate">{site.name}</h1>
+          <button
+            onClick={() => setEditing(true)}
+            className="shrink-0 text-[#7d868d] hover:text-[#2b7fff] hover:bg-[#15191c] p-1.5 rounded-lg transition-colors"
+            aria-label="Modifier le nom du site"
+            title="Modifier le nom"
+          >
+            <Pencil size={16} />
+          </button>
+        </div>
         {site.address && <p className="text-[#aab3ba] text-sm mt-0.5 mb-3">{site.address}</p>}
         {!site.address && <div className="mb-3" />}
 
@@ -53,6 +66,17 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
         )}
         {tab === "photos" && <PhotosTab siteId={site.id} showToast={showToast} />}
       </div>
+
+      {editing && (
+        <AddSiteModal
+          item={site}
+          onCancel={() => setEditing(false)}
+          onSave={async (name) => {
+            await onRename(name);
+            setEditing(false);
+          }}
+        />
+      )}
     </div>
   );
 }

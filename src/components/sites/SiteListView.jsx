@@ -6,9 +6,8 @@ import SiteCard from "./SiteCard";
 import AddSiteModal from "./AddSiteModal";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onEditSite, onDelete, onShowTableau, onShowKits, onShowChaudieres, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
-  const [editingSite, setEditingSite] = useState(null);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
   useEffect(() => {
@@ -117,7 +116,6 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             lastReading={lastReadingBySite?.[s.id]}
             showStatus={lastReadingBySite !== null}
             onOpen={() => onOpen(s.id)}
-            onEdit={() => setEditingSite(s)}
             onDelete={() => onDelete(s.id)}
           />
         ))}
@@ -130,17 +128,6 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             const id = await onAdd(name);
             setShowAdd(false);
             onOpen(id);
-          }}
-        />
-      )}
-
-      {editingSite && (
-        <AddSiteModal
-          item={editingSite}
-          onCancel={() => setEditingSite(null)}
-          onSave={async (name) => {
-            await onEditSite(editingSite.id, name);
-            setEditingSite(null);
           }}
         />
       )}
