@@ -42,7 +42,9 @@ input:focus-visible, button:focus-visible, textarea:focus-visible, select:focus-
     border: 1px solid #3a4147;
     border-radius: 10px;
     padding: 10px 12px;
-    font-size: 14px;
+    /* 16px minimum : en dessous, Safari iOS zoome automatiquement quand on
+       met le focus sur le champ. */
+    font-size: 16px;
     color: #ffffff;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }

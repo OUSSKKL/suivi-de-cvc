@@ -77,7 +77,7 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher un site, une adresse…"
-            className="peer w-full bg-[#15191c] border border-[#272d32] rounded-lg pl-9 pr-3 py-2.5 text-sm placeholder-[#7d868d] text-[#ffffff] transition-all focus:border-[#2b7fff] focus:shadow-[0_0_0_3px_rgba(43,127,255,0.12)] focus:outline-none"
+            className="peer w-full bg-[#15191c] border border-[#272d32] rounded-lg pl-9 pr-3 py-2.5 text-base placeholder-[#7d868d] text-[#ffffff] transition-all focus:border-[#2b7fff] focus:shadow-[0_0_0_3px_rgba(43,127,255,0.12)] focus:outline-none"
           />
         </div>
         <button
