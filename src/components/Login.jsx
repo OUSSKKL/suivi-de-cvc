@@ -29,14 +29,14 @@ export default function Login() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm border border-[#272d32] rounded-2xl p-6 bg-surface-gradient shadow-lift animate-scale-in"
       >
-        <div className="mb-4">
-          <Logo size={52} />
+        <div className="flex flex-col items-center text-center mb-5">
+          <Logo size={56} className="mb-3" />
+          <div className="flex items-center gap-2 text-[#2b7fff] font-mono text-xs uppercase tracking-[0.18em]">
+            <Gauge size={14} strokeWidth={2.5} />
+            Suivi CVC
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-[#2b7fff] font-mono text-xs uppercase tracking-[0.18em] mb-1.5">
-          <Gauge size={14} strokeWidth={2.5} />
-          Suivi CVC multi-sites
-        </div>
-        <h1 className="font-display text-2xl font-extrabold text-white flex items-center gap-2 mb-4">
+        <h1 className="font-display text-2xl font-extrabold text-white flex items-center justify-center gap-2 mb-4">
           <LogIn size={20} className="text-[#2b7fff]" />
           Connexion
         </h1>
