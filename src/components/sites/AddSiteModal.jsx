@@ -13,9 +13,9 @@ export default function AddSiteModal({ item, onCancel, onSave }) {
         <input
           autoFocus
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value.toUpperCase())}
           placeholder="Ex : 12 rue des Acacias, Lyon"
-          className="modal-input"
+          className="modal-input uppercase placeholder:normal-case"
           onKeyDown={(e) => e.key === "Enter" && name.trim() && onSave(name)}
         />
       </Field>

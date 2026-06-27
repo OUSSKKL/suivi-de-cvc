@@ -94,15 +94,17 @@ export default function App() {
   }
 
   async function addSite(name) {
-    const site = await db.createSite(name.trim(), "");
+    const clean = name.trim().toUpperCase();
+    const site = await db.createSite(clean, "");
     setSites([...sites, site]);
     showToast("Site ajouté");
     return site.id;
   }
 
   async function editSite(id, name) {
-    setSites(sites.map((s) => (s.id === id ? { ...s, name: name.trim() } : s)));
-    await db.updateSiteName(id, name.trim());
+    const clean = name.trim().toUpperCase();
+    setSites(sites.map((s) => (s.id === id ? { ...s, name: clean } : s)));
+    await db.updateSiteName(id, clean);
     showToast("Site modifié");
   }
 
