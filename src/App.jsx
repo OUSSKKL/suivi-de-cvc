@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import * as db from "./lib/db";
-import { setGeocode } from "./utils/geocode";
+import { setSiteCoord } from "./utils/siteLocations";
 import SiteListView from "./components/sites/SiteListView";
 import TableauView from "./components/tableaux/TableauView";
 import KitsTableView from "./components/tableaux/KitsTableView";
@@ -99,7 +99,7 @@ export default function App() {
   async function addSite(name, coords) {
     const clean = name.trim().toUpperCase();
     const site = await db.createSite(clean, "");
-    if (coords) setGeocode(clean, coords); // emplacement confirmé → cache carte
+    if (coords) setSiteCoord(clean, coords); // emplacement confirmé → carte
     setSites([...sites, site]);
     showToast("Site ajouté");
     return site.id;
