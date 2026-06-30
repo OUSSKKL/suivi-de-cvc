@@ -6,8 +6,7 @@ import ModalShell from "../shared/ModalShell";
 import Field from "../shared/Field";
 import ModalActions from "../shared/ModalActions";
 import { geocodeAddress } from "../../utils/geocode";
-
-const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+import { addDarkTiles } from "../map/darkTiles";
 
 const PIN_ICON = L.divIcon({
   className: "",
@@ -54,7 +53,7 @@ export default function AddSiteModal({ item, withLocation, onCancel, onSave }) {
     if (mapInst.current) return;
     const start = initialCoords.current;
     mapInst.current = L.map(mapRef.current, { attributionControl: false }).setView([start.lat, start.lng], 16);
-    L.tileLayer(DARK_TILES, { subdomains: "abcd", maxZoom: 20 }).addTo(mapInst.current);
+    addDarkTiles(mapInst.current);
     markerInst.current = L.marker([start.lat, start.lng], { draggable: true, icon: PIN_ICON }).addTo(mapInst.current);
     markerInst.current.on("dragend", () => {
       const p = markerInst.current.getLatLng();

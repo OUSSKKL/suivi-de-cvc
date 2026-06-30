@@ -3,8 +3,19 @@ import { ChevronLeft, Map as MapIcon } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import * as db from "../../lib/db";
-import { geocodeSites } from "../../utils/geocode";
+import { geocodeSites, setGeocode } from "../../utils/geocode";
 import { releveStatus, STATUS_COLORS } from "../../utils/releveStatus";
+import { addDarkTiles } from "./darkTiles";
+
+// Pastille colorée déplaçable (divIcon = pas de souci d'image sous Vite).
+function statusIcon(color) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid #0c0e10;box-shadow:0 0 0 1.5px ${color}"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+}
 
 export default function MapView({ sites, onBack }) {
   const mapRef = useRef(null);
@@ -31,12 +42,7 @@ export default function MapView({ sites, onBack }) {
 
       if (!mapInstance.current && mapRef.current) {
         mapInstance.current = L.map(mapRef.current).setView([48.8905, 2.37], 13);
-        // Fond sombre type "Plan" nuit : tuiles CARTO Dark Matter, gratuites.
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-          attribution: "© OpenStreetMap © CARTO",
-          subdomains: "abcd",
-          maxZoom: 20,
-        }).addTo(mapInstance.current);
+        addDarkTiles(mapInstance.current);
         markersRef.current = L.layerGroup().addTo(mapInstance.current);
       }
 
@@ -55,15 +61,17 @@ export default function MapView({ sites, onBack }) {
           continue;
         }
         const status = releveStatus(lastBySite[site.id]);
-        L.circleMarker([c.lat, c.lng], {
-          radius: 8,
-          color: "#0c0e10",
-          weight: 2,
-          fillColor: STATUS_COLORS[status],
-          fillOpacity: 1,
+        const marker = L.marker([c.lat, c.lng], {
+          draggable: true,
+          icon: statusIcon(STATUS_COLORS[status]),
         })
-          .bindPopup(`<b>${site.name}</b>`)
+          .bindPopup(`<b>${site.name}</b><br><span style="color:#888;font-size:11px">Glisse le point pour corriger</span>`)
           .addTo(markersRef.current);
+        // Repositionnement : la nouvelle position est mémorisée (cache local).
+        marker.on("dragend", () => {
+          const p = marker.getLatLng();
+          setGeocode(site.name, { lat: p.lat, lng: p.lng });
+        });
         bounds.push([c.lat, c.lng]);
       }
       if (bounds.length) mapInstance.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
@@ -110,6 +118,12 @@ export default function MapView({ sites, onBack }) {
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS.red }} />30j+</span>
         </div>
       </div>
+
+      {!loading && (
+        <p className="text-[#929ba2] text-xs mb-3">
+          Glisse un point pour corriger l'emplacement d'un site (mémorisé automatiquement).
+        </p>
+      )}
 
       {loading && (
         <p className="text-[#929ba2] text-sm mb-3">
