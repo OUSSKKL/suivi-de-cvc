@@ -41,14 +41,40 @@ export function expandAddress(name) {
   s = s.replace(/\bBV\b/gi, "boulevard");
   s = s.replace(/\bBD\b/gi, "boulevard");
   s = s.replace(/\bCITE\b/gi, "cité");
+  // Remarque : on borne avec (^|\s)…(\s|$) plutôt que \b, car \b ne reconnaît
+  // pas une fin de mot accentuée (ex "cité" : \bcité\b échoue après le "é").
   const hasType =
-    /\b(rue|impasse|boulevard|cité|avenue|av|passage|faubourg|all[ée]e|place|quai|chemin|route|cours|square|villa)\b/i.test(s);
+    /(^|\s)(rue|impasse|boulevard|cit[eé]|avenue|av|passage|faubourg|all[ée]e|place|quai|chemin|route|cours|square|villa)(\s|$)/i.test(s);
   if (!hasType) {
     // Insère "rue" après le numéro (et un éventuel bis/ter/quater).
     const m = s.match(/^(\d+(?:\s+(?:bis|ter|quater))?\s+)(.*)$/i);
     s = m ? `${m[1]}rue ${m[2]}` : `rue ${s}`;
   }
   return s;
+}
+
+// Découpe une saisie en UNE OU PLUSIEURS adresses distinctes à géocoder.
+// - "131/133 RUE X"  → ["131 rue X", "133 rue X"]   (même rue, 2 numéros)
+// - "12 RUE X / 7 RUE Y" → ["12 rue X", "7 rue Y"]  (2 adresses différentes)
+// - "131/133 X+52 Y" → les deux adresses + la 2e après le "+"
+export function expandAddresses(name) {
+  const out = [];
+  for (const chunk of (name || "").split("+").map((c) => c.trim()).filter(Boolean)) {
+    // Plage de numéros partageant la même rue : "131/133 RUE X".
+    const range = chunk.match(/^(\d+(?:\s*(?:bis|ter|quater))?)\s*\/\s*(\d+(?:\s*(?:bis|ter|quater))?)\s+(.+)$/i);
+    if (range) {
+      out.push(expandAddress(`${range[1]} ${range[3]}`));
+      out.push(expandAddress(`${range[2]} ${range[3]}`));
+    } else if (chunk.includes("/")) {
+      // Deux adresses complètes séparées par "/".
+      for (const part of chunk.split("/").map((p) => p.trim()).filter(Boolean)) {
+        out.push(expandAddress(part));
+      }
+    } else {
+      out.push(expandAddress(chunk));
+    }
+  }
+  return [...new Set(out)]; // dédoublonne
 }
 
 async function geocodeOne(query, bounded) {
@@ -83,11 +109,36 @@ async function searchMany(query, bounded, limit) {
 
 // Renvoie plusieurs adresses candidates (propositions réelles) pour un site,
 // d'abord dans le 18e/19e puis, si rien, sans contrainte de zone.
+// Si la saisie contient plusieurs adresses (séparées par "/" ou "+"), on
+// propose des candidats pour CHACUNE d'elles.
 export async function geocodeCandidates(name, limit = 5) {
-  const q = `${expandAddress(name)}, ${CITY}`;
-  let results = await searchMany(q, true, limit);
-  if (results.length === 0) results = await searchMany(q, false, limit);
-  return results;
+  const addrs = expandAddresses(name);
+
+  if (addrs.length <= 1) {
+    const q = `${addrs[0] || expandAddress(name)}, ${CITY}`;
+    let results = await searchMany(q, true, limit);
+    if (results.length === 0) results = await searchMany(q, false, limit);
+    return results;
+  }
+
+  // Plusieurs adresses : on récupère les meilleurs résultats de chacune.
+  const out = [];
+  const per = Math.max(2, Math.ceil(limit / addrs.length));
+  for (let i = 0; i < addrs.length; i++) {
+    if (i > 0) await delay(1100); // limite Nominatim : ~1 requête/seconde
+    const q = `${addrs[i]}, ${CITY}`;
+    let r = await searchMany(q, true, per);
+    if (r.length === 0) r = await searchMany(q, false, per);
+    out.push(...r);
+  }
+
+  // Dédoublonne par libellé en conservant l'ordre (1re adresse en premier).
+  const seen = new Set();
+  return out.filter((x) => {
+    if (seen.has(x.label)) return false;
+    seen.add(x.label);
+    return true;
+  });
 }
 
 // Enregistre des coordonnées confirmées dans le cache, pour que la carte
