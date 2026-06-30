@@ -4,8 +4,11 @@
 // ", Paris, France" avant l'interrogation. Les résultats sont mis en cache
 // dans localStorage pour ne géocoder chaque adresse qu'une seule fois.
 
-const CACHE_KEY = "cvc:geocache:v1";
+const CACHE_KEY = "cvc:geocache:v2";
 const CITY = "Paris, France";
+// Tous les sites sont dans le 18e et le 19e : on contraint la recherche à
+// cette zone (coin haut-gauche puis bas-droite) pour fiabiliser le géocodage.
+const VIEWBOX = "2.325,48.905,2.410,48.868";
 
 function loadCache() {
   try {
@@ -40,8 +43,9 @@ export function expandAddress(name) {
   return s;
 }
 
-async function geocodeOne(query) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+async function geocodeOne(query, bounded) {
+  let url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+  if (bounded) url += `&viewbox=${VIEWBOX}&bounded=1`;
   const res = await fetch(url, { headers: { "Accept-Language": "fr" } });
   if (!res.ok) throw new Error("geocode http " + res.status);
   const data = await res.json();
@@ -65,7 +69,14 @@ export async function geocodeSites(sites, onProgress) {
     } else {
       if (didNetwork) await delay(1100); // limite Nominatim : 1 requête/seconde
       try {
-        result[site.id] = await geocodeOne(`${expandAddress(site.name)}, ${CITY}`);
+        const q = `${expandAddress(site.name)}, ${CITY}`;
+        // D'abord borné au 18e/19e ; si rien, on réessaie sans contrainte.
+        let coords = await geocodeOne(q, true);
+        if (!coords) {
+          await delay(1100);
+          coords = await geocodeOne(q, false);
+        }
+        result[site.id] = coords;
       } catch {
         result[site.id] = null;
       }
