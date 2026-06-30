@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Search, Table, Flame, Boxes, Clock, LogOut } from "lucide-react";
+import { Building2, Plus, Search, Table, Flame, Boxes, Clock, Map as MapIcon, LogOut } from "lucide-react";
 import { sortSites } from "../../utils/sortSites";
 import * as db from "../../lib/db";
 import SiteCard from "./SiteCard";
 import AddSiteModal from "./AddSiteModal";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
@@ -44,12 +44,22 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             <LogOut size={16} />
           </button>
         </div>
-        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-baseline gap-2.5">
-          Mes bâtiments
-          <span className="text-base font-bold text-[#2b7fff] bg-[#2b7fff]/10 px-2.5 py-0.5 rounded-full tabular-nums">
-            {allCount}
-          </span>
-        </h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-baseline gap-2.5">
+            Mes bâtiments
+            <span className="text-base font-bold text-[#2b7fff] bg-[#2b7fff]/10 px-2.5 py-0.5 rounded-full tabular-nums">
+              {allCount}
+            </span>
+          </h1>
+          <button
+            onClick={onShowMap}
+            className="shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-surface-gradient border border-[#272d32] hover:border-[#3a4147] text-[#2b7fff] transition-colors"
+            aria-label="Carte des sites"
+            title="Carte des sites"
+          >
+            <MapIcon size={20} />
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-2 mb-4">

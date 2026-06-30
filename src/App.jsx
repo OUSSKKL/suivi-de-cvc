@@ -7,6 +7,7 @@ import KitsTableView from "./components/tableaux/KitsTableView";
 import ChaudieresTableView from "./components/tableaux/ChaudieresTableView";
 import SiteDetailView from "./components/sites/SiteDetailView";
 import AstreinteView from "./components/astreinte/AstreinteView";
+import MapView from "./components/map/MapView";
 import ConfirmModal from "./components/shared/ConfirmModal";
 import SetupNeeded from "./components/SetupNeeded";
 import Login from "./components/Login";
@@ -191,6 +192,7 @@ export default function App() {
           onShowKits={() => navigateTo("kits")}
           onShowChaudieres={() => navigateTo("chaudieres")}
           onShowAstreinte={() => navigateTo("astreinte")}
+          onShowMap={() => navigateTo("map")}
           onLogout={() => supabase.auth.signOut()}
         />
       )}
@@ -204,6 +206,8 @@ export default function App() {
       )}
 
       {view === "astreinte" && <AstreinteView onBack={goBack} showToast={showToast} />}
+
+      {view === "map" && <MapView sites={sites} onBack={goBack} />}
 
       {view === "site" && activeSite && (
         <SiteDetailView
