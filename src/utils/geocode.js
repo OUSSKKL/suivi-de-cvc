@@ -27,9 +27,14 @@ function saveCache(c) {
 
 export function expandAddress(name) {
   let s = (name || "").trim();
-  // Plusieurs adresses dans un même nom (ex "12 X / 7 Y", "131/133 X+52 Y") :
-  // on ne garde que la première pour le géocodage.
-  s = s.split(/[/+]/)[0].trim();
+  // Deuxième adresse après un "+" (ex "131/133 X+52 Y") : ignorée.
+  s = s.split("+")[0].trim();
+  // Plage de numéros "131/133", "1-11" ou "15 / 17" → on garde le 1er numéro
+  // mais on conserve la rue qui suit.
+  s = s.replace(/(\d+)\s*[/-]\s*\d+/g, "$1");
+  // S'il reste un "/" (séparateur entre deux adresses, ex "12 X / 7 Y") :
+  // on ne garde que la première.
+  s = s.split("/")[0].trim();
   s = s.replace(/\bIMP\b/gi, "impasse");
   s = s.replace(/\bBV\b/gi, "boulevard");
   s = s.replace(/\bBD\b/gi, "boulevard");
@@ -62,6 +67,24 @@ export async function geocodeAddress(name) {
   let c = await geocodeOne(q, true);
   if (!c) c = await geocodeOne(q, false);
   return c;
+}
+
+async function searchMany(query, bounded, limit) {
+  let url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=${limit}&q=${encodeURIComponent(query)}`;
+  if (bounded) url += `&viewbox=${VIEWBOX}&bounded=1`;
+  const res = await fetch(url, { headers: { "Accept-Language": "fr" } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.map((d) => ({ lat: parseFloat(d.lat), lng: parseFloat(d.lon), label: d.display_name }));
+}
+
+// Renvoie plusieurs adresses candidates (propositions réelles) pour un site,
+// d'abord dans le 18e/19e puis, si rien, sans contrainte de zone.
+export async function geocodeCandidates(name, limit = 5) {
+  const q = `${expandAddress(name)}, ${CITY}`;
+  let results = await searchMany(q, true, limit);
+  if (results.length === 0) results = await searchMany(q, false, limit);
+  return results;
 }
 
 // Enregistre des coordonnées confirmées dans le cache, pour que la carte
