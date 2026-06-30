@@ -55,6 +55,23 @@ async function geocodeOne(query, bounded) {
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Géocode une seule adresse (d'abord bornée au 18e/19e, sinon sans contrainte).
+// Utilisé pour la confirmation d'emplacement à l'ajout d'un site.
+export async function geocodeAddress(name) {
+  const q = `${expandAddress(name)}, ${CITY}`;
+  let c = await geocodeOne(q, true);
+  if (!c) c = await geocodeOne(q, false);
+  return c;
+}
+
+// Enregistre des coordonnées confirmées dans le cache, pour que la carte
+// affiche directement l'emplacement validé sans regéocoder.
+export function setGeocode(name, coords) {
+  const cache = loadCache();
+  cache[(name || "").trim().toUpperCase()] = coords || null;
+  saveCache(cache);
+}
+
 // Géocode une liste de sites. onProgress(done, total) est appelé au fur et à
 // mesure. Retourne { [siteId]: { lat, lng } | null }.
 export async function geocodeSites(sites, onProgress) {

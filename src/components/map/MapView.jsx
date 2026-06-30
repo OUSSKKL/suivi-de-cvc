@@ -31,8 +31,8 @@ export default function MapView({ sites, onBack }) {
 
       if (!mapInstance.current && mapRef.current) {
         mapInstance.current = L.map(mapRef.current).setView([48.8905, 2.37], 13);
-        // Fond clair type "Plan" (Apple) : tuiles CARTO Voyager, gratuites.
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        // Fond sombre type "Plan" nuit : tuiles CARTO Dark Matter, gratuites.
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
           attribution: "© OpenStreetMap © CARTO",
           subdomains: "abcd",
           maxZoom: 20,

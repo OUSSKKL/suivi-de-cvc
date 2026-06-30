@@ -134,9 +134,10 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
 
       {showAdd && (
         <AddSiteModal
+          withLocation
           onCancel={() => setShowAdd(false)}
-          onSave={async (name) => {
-            const id = await onAdd(name);
+          onSave={async (name, coords) => {
+            const id = await onAdd(name, coords);
             setShowAdd(false);
             onOpen(id);
           }}
