@@ -98,13 +98,37 @@ export async function geocodeAddress(name) {
   return c;
 }
 
+// Adresse courte et lisible à partir des détails Nominatim (ex "12 Rue de
+// Maubeuge, Paris"), avec repli sur le début du libellé complet.
+function shortAddr(d) {
+  const a = d.address || {};
+  const num = a.house_number ? `${a.house_number} ` : "";
+  const road = a.road || a.pedestrian || a.footway || a.cycleway || a.path || "";
+  if (road) return `${num}${road}`.trim(); // numéro + rue, sans la ville
+  return (d.display_name || "").split(",")[0].trim();
+}
+
 async function searchMany(query, bounded, limit) {
   let url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=${limit}&q=${encodeURIComponent(query)}`;
   if (bounded) url += `&viewbox=${VIEWBOX}&bounded=1`;
   const res = await fetch(url, { headers: { "Accept-Language": "fr" } });
   if (!res.ok) return [];
   const data = await res.json();
-  return data.map((d) => ({ lat: parseFloat(d.lat), lng: parseFloat(d.lon), label: d.display_name }));
+  return data.map((d) => ({ lat: parseFloat(d.lat), lng: parseFloat(d.lon), label: d.display_name, short: shortAddr(d) }));
+}
+
+// Suggestions d'adresses pour l'autocomplétion pendant la saisie libre.
+// On ne découpe pas sur "/" ici (l'utilisateur tape une seule adresse) ;
+// recherche d'abord dans le 18e/19e, puis sans contrainte si rien.
+export async function suggestAddresses(query, limit = 5) {
+  const raw = (query || "").trim();
+  if (raw.length < 3) return [];
+  // Développe les abréviations (bv/bd→boulevard, imp→impasse…) avant la
+  // recherche, sinon Nominatim ne trouve rien (ex "bv mortier").
+  const q = expandAddress(raw);
+  let results = await searchMany(`${q}, ${CITY}`, true, limit);
+  if (results.length === 0) results = await searchMany(`${q}, ${CITY}`, false, limit);
+  return results;
 }
 
 // Renvoie plusieurs adresses candidates (propositions réelles) pour un site,

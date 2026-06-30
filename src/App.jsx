@@ -100,7 +100,7 @@ export default function App() {
     const clean = name.trim().toUpperCase();
     const site = await db.createSite(clean, "");
     if (coords) setSiteCoord(clean, coords); // emplacement confirmé → carte
-    setSites([...sites, site]);
+    setSites((prev) => [...prev, site]); // updater fonctionnel : ajout en série OK (scan)
     showToast("Site ajouté");
     return site.id;
   }
@@ -110,6 +110,12 @@ export default function App() {
     setSites(sites.map((s) => (s.id === id ? { ...s, name: clean } : s)));
     await db.updateSiteName(id, clean);
     showToast("Site modifié");
+  }
+
+  async function saveRemark(id, remark) {
+    setSites((prev) => prev.map((s) => (s.id === id ? { ...s, remark } : s)));
+    await db.updateSiteRemark(id, remark);
+    showToast("Remarque enregistrée");
   }
 
   async function deleteSite(id) {
@@ -220,6 +226,7 @@ export default function App() {
           showToast={showToast}
           onKitsChange={(kits) => updateKits(activeSite.id, kits)}
           onRename={(name) => editSite(activeSite.id, name)}
+          onSaveRemark={(remark) => saveRemark(activeSite.id, remark)}
         />
       )}
 

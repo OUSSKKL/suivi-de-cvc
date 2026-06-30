@@ -8,6 +8,7 @@ function mapSite(row) {
     id: row.id,
     name: row.name,
     address: row.address || "",
+    remark: row.remark || "",
     order: row.order,
     kits: row.kits ?? 0,
     createdAt: row.created_at,
@@ -87,6 +88,11 @@ export async function updateSiteName(id, name) {
 
 export async function updateSiteKits(id, kits) {
   const { error } = await supabase.from("sites").update({ kits }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateSiteRemark(id, remark) {
+  const { error } = await supabase.from("sites").update({ remark }).eq("id", id);
   if (error) throw error;
 }
 

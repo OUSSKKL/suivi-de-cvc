@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Gauge, Flame, Camera, ChevronLeft, Pencil } from "lucide-react";
+import { Gauge, Flame, StickyNote, ChevronLeft, Pencil } from "lucide-react";
 import CompteursTab from "../compteurs/CompteursTab";
 import ChaudieresTab from "../chaudieres/ChaudieresTab";
 import PhotosTab from "../photos/PhotosTab";
 import AddSiteModal from "./AddSiteModal";
 
-export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange, onRename }) {
+export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange, onRename, onSaveRemark }) {
   const [editing, setEditing] = useState(false);
   const tabs = [
     { id: "compteurs", label: "Compteurs", icon: Gauge },
     { id: "chaudieres", label: "Chaudières", icon: Flame },
-    { id: "photos", label: "Photos", icon: Camera },
+    { id: "photos", label: "Remarques", icon: StickyNote },
   ];
 
   return (
@@ -64,7 +64,9 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
         {tab === "chaudieres" && (
           <ChaudieresTab siteId={site.id} kits={site.kits} onKitsChange={onKitsChange} showToast={showToast} />
         )}
-        {tab === "photos" && <PhotosTab siteId={site.id} showToast={showToast} />}
+        {tab === "photos" && (
+          <PhotosTab siteId={site.id} remark={site.remark} onSaveRemark={onSaveRemark} showToast={showToast} />
+        )}
       </div>
 
       {editing && (

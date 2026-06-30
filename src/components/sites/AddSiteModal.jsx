@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import ModalShell from "../shared/ModalShell";
 import Field from "../shared/Field";
 import ModalActions from "../shared/ModalActions";
-import { geocodeAddress } from "../../utils/geocode";
+import { geocodeAddress, suggestAddresses } from "../../utils/geocode";
 import { addDarkTiles } from "../map/darkTiles";
 
 const PIN_ICON = L.divIcon({
@@ -21,21 +21,72 @@ export default function AddSiteModal({ item, withLocation, onCancel, onSave }) {
   const [busy, setBusy] = useState(false);
   const [coords, setCoords] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [openSug, setOpenSug] = useState(false);
 
   const initialCoords = useRef(null);
+  const pickedCoords = useRef(null); // coord d'une suggestion choisie (évite un 2e géocodage)
+  const justPicked = useRef(false);
+  const debounceRef = useRef(null);
   const mapRef = useRef(null);
   const mapInst = useRef(null);
   const markerInst = useRef(null);
+
+  // Autocomplétion : propose de vraies adresses pendant la saisie.
+  useEffect(() => {
+    if (step !== "form") return;
+    if (justPicked.current) {
+      justPicked.current = false;
+      return;
+    }
+    pickedCoords.current = null; // la saisie a changé : on annule la coord choisie
+    const q = name.trim();
+    if (q.length < 3) {
+      setSuggestions([]);
+      setOpenSug(false);
+      return;
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await suggestAddresses(q, 5);
+        setSuggestions(res);
+        setOpenSug(res.length > 0);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [name, step]);
+
+  // Si OSM renvoie la rue sans numéro (ex "Boulevard Mortier"), on réinsère le
+  // numéro saisi (ex "120 bv mortier" → "120 Boulevard Mortier").
+  function withTypedNumber(label) {
+    const l = (label || "").trim();
+    const m = name.trim().match(/^\d+\s*(?:bis|ter|quater)?/i);
+    return m && !/^\d/.test(l) ? `${m[0].trim()} ${l}` : l;
+  }
+
+  function pickSuggestion(s) {
+    justPicked.current = true;
+    setName(withTypedNumber(s.short || s.label).toUpperCase());
+    pickedCoords.current = { lat: s.lat, lng: s.lng };
+    setSuggestions([]);
+    setOpenSug(false);
+  }
 
   async function goToConfirm() {
     if (!name.trim()) return;
     setBusy(true);
     setNotFound(false);
-    let c = null;
-    try {
-      c = await geocodeAddress(name);
-    } catch {
-      c = null;
+    setOpenSug(false);
+    let c = pickedCoords.current;
+    if (!c) {
+      try {
+        c = await geocodeAddress(name);
+      } catch {
+        c = null;
+      }
     }
     if (!c) {
       c = { lat: 48.8905, lng: 2.37 }; // centre 18e/19e par défaut, à déplacer
@@ -76,14 +127,35 @@ export default function AddSiteModal({ item, withLocation, onCancel, onSave }) {
       {step === "form" && (
         <>
           <Field label="Adresse">
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value.toUpperCase())}
-              placeholder="Ex : 12 rue des Acacias, Lyon"
-              className="modal-input uppercase placeholder:normal-case"
-              onKeyDown={(e) => e.key === "Enter" && name.trim() && (withLocation ? goToConfirm() : onSave(name))}
-            />
+            <div className="relative">
+              <input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value.toUpperCase())}
+                placeholder="Ex : 12 rue des Acacias, Lyon"
+                className="modal-input uppercase placeholder:normal-case"
+                autoComplete="off"
+                onKeyDown={(e) => e.key === "Enter" && name.trim() && (withLocation ? goToConfirm() : onSave(name))}
+              />
+              {openSug && suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-[#15191c] border border-[#272d32] rounded-lg shadow-[0_12px_30px_-10px_rgba(0,0,0,0.7)] overflow-hidden max-h-56 overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        pickSuggestion(s);
+                      }}
+                      className="w-full text-left flex items-start gap-2 px-3 py-2 text-sm text-[#c2c8cd] hover:bg-[#1a1f23] border-b border-[#1f2429] last:border-0 transition-colors"
+                    >
+                      <MapPin size={14} className="mt-0.5 shrink-0 text-[#7d868d]" />
+                      <span className="min-w-0">{withTypedNumber(s.short || s.label)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
 
           {withLocation ? (
