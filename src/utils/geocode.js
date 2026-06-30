@@ -35,6 +35,8 @@ export function expandAddress(name) {
   // S'il reste un "/" (séparateur entre deux adresses, ex "12 X / 7 Y") :
   // on ne garde que la première.
   s = s.split("/")[0].trim();
+  // "8bis"/"8 BIS" → "8 bis" (idem ter/quater), pour ne pas coller le numéro.
+  s = s.replace(/(\d+)\s*(bis|ter|quater)\b/gi, "$1 $2");
   s = s.replace(/\bIMP\b/gi, "impasse");
   s = s.replace(/\bBV\b/gi, "boulevard");
   s = s.replace(/\bBD\b/gi, "boulevard");
@@ -42,7 +44,8 @@ export function expandAddress(name) {
   const hasType =
     /\b(rue|impasse|boulevard|cité|avenue|av|passage|faubourg|all[ée]e|place|quai|chemin|route|cours|square|villa)\b/i.test(s);
   if (!hasType) {
-    const m = s.match(/^(\d+\s+)(.*)$/);
+    // Insère "rue" après le numéro (et un éventuel bis/ter/quater).
+    const m = s.match(/^(\d+(?:\s+(?:bis|ter|quater))?\s+)(.*)$/i);
     s = m ? `${m[1]}rue ${m[2]}` : `rue ${s}`;
   }
   return s;
