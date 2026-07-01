@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Polices de l'app */
+:root {
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
 html, body, #root {
   background-color: #0c0e10;
 }

@@ -64,7 +64,9 @@ export default function MapView({ sites, onBack }) {
 
     el.querySelector(".pp-waze").addEventListener("click", () => {
       const p = marker.getLatLng();
-      window.open(`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`, "_blank");
+      // Navigation directe (pas de window.open) : sur iOS ça laisse le système
+      // ouvrir l'app Waze au lieu d'un onglet vide dans le navigateur.
+      window.location.href = `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
     });
     el.querySelector(".pp-del").addEventListener("click", () => {
       removeSiteCoord(site.name);

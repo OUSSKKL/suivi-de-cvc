@@ -68,7 +68,6 @@ export default function AstreinteView({ onBack, showToast }) {
     .filter((it) => (it.date || "").slice(0, 7) === monthKey)
     .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
   const monthTotalH = monthItems.reduce((s, it) => s + durationHours(it.startTime, it.endTime), 0);
-  const grandTotalH = items.reduce((s, it) => s + durationHours(it.startTime, it.endTime), 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 animate-fade-in">
@@ -99,13 +98,13 @@ export default function AstreinteView({ onBack, showToast }) {
       {items.length > 0 && (
         <div className="bg-[#15191c] border border-[#272d32] rounded-xl p-4 mb-4 flex items-center justify-around gap-3 text-center">
           <div>
-            <p className="font-display text-2xl font-extrabold text-white tabular-nums">{items.length}</p>
-            <p className="text-[#929ba2] text-xs">sortie{items.length !== 1 ? "s" : ""} au total</p>
+            <p className="font-display text-2xl font-extrabold text-white tabular-nums">{monthItems.length}</p>
+            <p className="text-[#929ba2] text-xs">sortie{monthItems.length !== 1 ? "s" : ""} ce mois</p>
           </div>
           <div className="w-px self-stretch bg-[#272d32]" />
           <div>
-            <p className="font-display text-2xl font-extrabold text-[#2b7fff] tabular-nums">{formatDuration(grandTotalH)}</p>
-            <p className="text-[#929ba2] text-xs">au total</p>
+            <p className="font-display text-2xl font-extrabold text-[#2b7fff] tabular-nums">{formatDuration(monthTotalH)}</p>
+            <p className="text-[#929ba2] text-xs">ce mois</p>
           </div>
         </div>
       )}
@@ -122,11 +121,6 @@ export default function AstreinteView({ onBack, showToast }) {
         <div className="text-center">
           <p className="font-display font-bold text-white capitalize leading-tight">
             {MOIS[selMonth]} {selYear}
-          </p>
-          <p className="text-xs text-[#929ba2]">
-            {monthItems.length} sortie{monthItems.length !== 1 ? "s" : ""}
-            <span className="text-[#3a4147] mx-1">·</span>
-            <span className="font-semibold text-[#2b7fff]">{formatDuration(monthTotalH)}</span>
           </p>
         </div>
         <button
@@ -147,9 +141,11 @@ export default function AstreinteView({ onBack, showToast }) {
           actionLabel="Ajouter une intervention"
         />
       ) : monthItems.length === 0 ? (
-        <p className="text-[#929ba2] text-sm text-center border border-dashed border-[#272d32] rounded-xl py-8">
-          Aucune sortie ce mois-ci.
-        </p>
+        <EmptyState
+          icon={Clock}
+          title="Aucune sortie ce mois-ci"
+          message={`Rien d'enregistré pour ${MOIS[selMonth]} ${selYear}.`}
+        />
       ) : (
         <div className="border border-[#272d32] rounded-xl overflow-hidden">
           {monthItems.map((it, i) => (

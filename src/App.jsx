@@ -9,6 +9,8 @@ import ChaudieresTableView from "./components/tableaux/ChaudieresTableView";
 import SiteDetailView from "./components/sites/SiteDetailView";
 import AstreinteView from "./components/astreinte/AstreinteView";
 import MapView from "./components/map/MapView";
+import SavView from "./components/sav/SavView";
+import FournisseurView from "./components/fournisseur/FournisseurView";
 import ConfirmModal from "./components/shared/ConfirmModal";
 import SetupNeeded from "./components/SetupNeeded";
 import Login from "./components/Login";
@@ -201,6 +203,8 @@ export default function App() {
           onShowChaudieres={() => navigateTo("chaudieres")}
           onShowAstreinte={() => navigateTo("astreinte")}
           onShowMap={() => navigateTo("map")}
+          onShowSav={() => navigateTo("sav")}
+          onShowFournisseur={() => navigateTo("fournisseur")}
           onLogout={() => supabase.auth.signOut()}
         />
       )}
@@ -216,6 +220,10 @@ export default function App() {
       {view === "astreinte" && <AstreinteView onBack={goBack} showToast={showToast} />}
 
       {view === "map" && <MapView sites={sites} onBack={goBack} />}
+
+      {view === "sav" && <SavView onBack={goBack} />}
+
+      {view === "fournisseur" && <FournisseurView onBack={goBack} />}
 
       {view === "site" && activeSite && (
         <SiteDetailView

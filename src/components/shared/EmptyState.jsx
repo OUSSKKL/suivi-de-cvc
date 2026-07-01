@@ -5,10 +5,12 @@ export default function EmptyState({ icon: Icon, title, message, action, actionL
         <Icon size={24} className="text-[#2b7fff]/80" />
       </div>
       <p className="text-[#e4e7ea] font-medium mb-1">{title}</p>
-      <p className="text-[#929ba2] text-sm mb-4">{message}</p>
-      <button onClick={action} className="text-[#2b7fff] text-sm font-semibold underline underline-offset-2">
-        {actionLabel}
-      </button>
+      <p className={`text-[#929ba2] text-sm ${actionLabel ? "mb-4" : ""}`}>{message}</p>
+      {actionLabel && (
+        <button onClick={action} className="text-[#2b7fff] text-sm font-semibold underline underline-offset-2">
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }

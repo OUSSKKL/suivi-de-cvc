@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Search, Table, Flame, Boxes, Clock, Map as MapIcon, LogOut } from "lucide-react";
-import { sortSites } from "../../utils/sortSites";
+import { Building2, Plus, Search, Table, Flame, Boxes, Clock, Headset, Package, LogOut } from "lucide-react";
+import { sortSitesByStatus } from "../../utils/sortSites";
 import * as db from "../../lib/db";
 import SiteCard from "./SiteCard";
 import AddSiteModal from "./AddSiteModal";
+import MapPreview from "./MapPreview";
+import EmptyState from "../shared/EmptyState";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
@@ -26,59 +28,50 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 sm:pt-10 animate-fade-in">
-      <header className="mb-6">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2.5">
-            <Logo size={36} className="shrink-0" />
-            <span className="text-[#2b7fff] font-mono text-xs uppercase tracking-[0.18em]">
-              Suivi CVC multi-sites
-            </span>
+    <div className="max-w-3xl mx-auto px-4 pb-28 pt-5 animate-fade-in">
+      <header className="mb-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Logo size={30} className="shrink-0" />
+            <h1 className="font-display text-2xl font-extrabold tracking-tight text-white flex items-center gap-2 truncate">
+              Mes sites
+              <span className="text-sm font-bold text-[#2b7fff] bg-[#2b7fff]/10 px-2 py-0.5 rounded-full tabular-nums">
+                {allCount}
+              </span>
+            </h1>
           </div>
           <button
             onClick={onLogout}
-            className="text-[#7d868d] hover:text-[#e4e7ea] hover:bg-[#15191c] p-2 rounded-lg transition-colors"
+            className="shrink-0 text-[#7d868d] hover:text-[#e4e7ea] hover:bg-[#15191c] p-2 rounded-lg transition-colors"
             aria-label="Se déconnecter"
             title="Se déconnecter"
           >
             <LogOut size={16} />
           </button>
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-baseline gap-2.5">
-            Mes bâtiments
-            <span className="text-base font-bold text-[#2b7fff] bg-[#2b7fff]/10 px-2.5 py-0.5 rounded-full tabular-nums">
-              {allCount}
-            </span>
-          </h1>
-          <button
-            onClick={onShowMap}
-            className="shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-surface-gradient border border-[#272d32] hover:border-[#3a4147] text-[#2b7fff] transition-colors"
-            aria-label="Carte des sites"
-            title="Carte des sites"
-          >
-            <MapIcon size={20} />
-          </button>
-        </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 mb-4">
+      <div className="grid grid-cols-3 gap-2 mb-4">
         {[
-          { onClick: onShowTableau, icon: Table, label: "Relevés" },
-          { onClick: onShowKits, icon: Boxes, label: "Kits" },
-          { onClick: onShowChaudieres, icon: Flame, label: "Chaudières" },
-          { onClick: onShowAstreinte, icon: Clock, label: "Astreinte" },
-        ].map(({ onClick, icon: Icon, label }) => (
+          { onClick: onShowSav, icon: Headset, label: "SAV", color: "#22c55e" },
+          { onClick: onShowChaudieres, icon: Flame, label: "Chaudières", color: "#f5a524" },
+          { onClick: onShowAstreinte, icon: Clock, label: "Astreinte", color: "#2b7fff" },
+          { onClick: onShowFournisseur, icon: Package, label: "Fournisseurs", color: "#a855f7" },
+          { onClick: onShowKits, icon: Boxes, label: "Kits", color: "#06b6d4" },
+          { onClick: onShowTableau, icon: Table, label: "Relevés", color: "#ec4899" },
+        ].map(({ onClick, icon: Icon, label, color }) => (
           <button
             key={label}
             onClick={onClick}
             className="group flex flex-col items-center justify-center gap-2 bg-surface-gradient hover:border-[#3a4147] border border-[#272d32] text-[#ffffff] font-semibold text-xs px-2 py-3.5 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-card text-center"
           >
-            <Icon size={17} className="text-[#2b7fff] transition-transform group-hover:scale-110" />
+            <Icon size={18} style={{ color }} className="transition-transform group-hover:scale-110" />
             {label}
           </button>
         ))}
       </div>
+
+      <MapPreview sites={sites} lastBySite={lastReadingBySite} onOpen={onShowMap} />
 
       <div className="flex gap-2 mb-5">
         <div className="relative flex-1">
@@ -99,6 +92,12 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
         </button>
       </div>
 
+      {sites.length > 0 && (
+        <p className="text-[10px] text-[#5a6168] text-center -mt-3 mb-4">
+          Balayer vers la gauche pour supprimer le site
+        </p>
+      )}
+
       {sites.length === 0 && allCount === 0 && (
         <div className="border border-dashed border-[#272d32] rounded-xl p-10 text-center mt-10 animate-fade-in">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2b7fff]/15 to-transparent ring-1 ring-[#2b7fff]/10 flex items-center justify-center mx-auto mb-4">
@@ -116,11 +115,17 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
       )}
 
       {sites.length === 0 && allCount > 0 && (
-        <p className="text-[#929ba2] text-sm text-center mt-10">Aucun résultat pour « {search} ».</p>
+        <div className="mt-8">
+          <EmptyState
+            icon={Search}
+            title="Aucun résultat"
+            message={`Aucun site ne correspond à « ${search} ».`}
+          />
+        </div>
       )}
 
       <div className="grid gap-2.5 mt-1">
-        {sortSites(sites).map((s) => (
+        {sortSitesByStatus(sites, lastReadingBySite).map((s) => (
           <SiteCard
             key={s.id}
             site={s}

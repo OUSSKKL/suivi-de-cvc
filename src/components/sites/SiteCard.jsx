@@ -1,13 +1,11 @@
 import { useState, useRef } from "react";
-import { Building2, ChevronRight, Trash2 } from "lucide-react";
-import { releveStatus, STATUS_COLORS, daysSince } from "../../utils/releveStatus";
+import { Trash2, Navigation } from "lucide-react";
+import { releveStatus, STATUS_COLORS } from "../../utils/releveStatus";
+import { getAllSiteCoords } from "../../utils/siteLocations";
 
 export default function SiteCard({ site, lastReading, showStatus, onOpen, onDelete }) {
   const ACTIONS_WIDTH = 96;
   const status = showStatus ? releveStatus(lastReading) : null;
-  const statusLabel = !lastReading
-    ? "Jamais relevé"
-    : `Dernier relevé il y a ${daysSince(lastReading)} j`;
   const [translateX, setTranslateX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startX = useRef(0);
@@ -19,6 +17,16 @@ export default function SiteCard({ site, lastReading, showStatus, onOpen, onDele
 
   function clamp(x) {
     return Math.max(-ACTIONS_WIDTH, Math.min(0, x));
+  }
+
+  // Ouvre Waze vers le site : coordonnées GPS si connues, sinon l'adresse.
+  function openItineraire(e) {
+    e.stopPropagation();
+    const c = getAllSiteCoords()[(site.name || "").trim().toUpperCase()];
+    const url = c
+      ? `https://waze.com/ul?ll=${c.lat},${c.lng}&navigate=yes`
+      : `https://waze.com/ul?q=${encodeURIComponent(site.address || site.name)}&navigate=yes`;
+    window.location.href = url;
   }
 
   // Pointer Events unifie souris, doigt et stylet : une seule logique de
@@ -106,30 +114,26 @@ export default function SiteCard({ site, lastReading, showStatus, onOpen, onDele
           transform: `translateX(${translateX}px)`,
           transition: dragging ? "none" : "transform 0.2s ease-out",
           cursor: dragging ? "grabbing" : "grab",
+          ...(status ? { borderLeft: `4px solid ${STATUS_COLORS[status]}` } : null),
         }}
         className="touch-pan-y select-none group/card relative bg-surface-gradient border border-[#272d32] rounded-xl transition-[border-color,box-shadow] hover:border-[#3a4147] hover:shadow-card"
       >
-        <button type="button" className="w-full text-left p-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2b7fff]/20 to-[#2b7fff]/5 ring-1 ring-[#2b7fff]/15 flex items-center justify-center shrink-0">
-            <Building2 size={18} className="text-[#2b7fff]" />
-          </div>
+        <div className="w-full text-left p-4 flex items-center gap-3.5">
+          <button
+            type="button"
+            onClick={openItineraire}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="w-10 h-10 rounded-lg bg-accent-gradient text-white shadow-glow flex items-center justify-center shrink-0 transition-transform active:scale-95 hover:brightness-110"
+            aria-label="Itinéraire (Waze)"
+            title="Itinéraire (Waze)"
+          >
+            <Navigation size={17} strokeWidth={2.4} className="translate-x-[-1px]" />
+          </button>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-[#ffffff] truncate">{site.name}</p>
             {site.address && <p className="text-[#aab3ba] text-xs truncate mt-0.5">{site.address}</p>}
           </div>
-          {status && (
-            <span
-              title={statusLabel}
-              aria-label={statusLabel}
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{
-                backgroundColor: STATUS_COLORS[status],
-                boxShadow: `0 0 0 3px ${STATUS_COLORS[status]}22`,
-              }}
-            />
-          )}
-          <ChevronRight size={18} className="text-[#5a6168] shrink-0 transition-transform group-hover/card:translate-x-0.5 group-hover/card:text-[#929ba2]" />
-        </button>
+        </div>
       </div>
     </div>
   );
