@@ -35,6 +35,9 @@ export function listUsers() {
 export function createUser(username, password) {
   return callAdmin("create", { username, password });
 }
+export function setUsername(userId, username) {
+  return callAdmin("setUsername", { userId, username });
+}
 export function setUserPassword(userId, password) {
   return callAdmin("setPassword", { userId, password });
 }

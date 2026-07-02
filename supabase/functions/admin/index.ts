@@ -95,6 +95,16 @@ Deno.serve(async (req) => {
       return json({ id: data.user.id, username });
     }
 
+    if (action === "setUsername") {
+      const { userId, username } = payload;
+      if (!userId || !username) return json({ error: "Utilisateur et nom requis" }, 400);
+      const email = usernameToEmail(username);
+      const { error } = await admin.auth.admin.updateUserById(userId, { email, email_confirm: true });
+      if (error) throw error;
+      await admin.from("profiles").update({ username }).eq("id", userId);
+      return json({ ok: true });
+    }
+
     if (action === "setPassword") {
       const { userId, password } = payload;
       if (!userId || !password) return json({ error: "Utilisateur et mot de passe requis" }, 400);

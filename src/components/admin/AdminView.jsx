@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, Users, MapPin, Plus, Trash2, KeyRound, Check, Search, X, LogOut } from "lucide-react";
+import { Shield, Users, MapPin, Plus, Trash2, Check, Search, X, LogOut, ChevronRight } from "lucide-react";
 import * as admin from "../../lib/admin";
 
 export default function AdminView({ sites, currentUserId, onLogout, showToast }) {
@@ -45,7 +45,7 @@ export default function AdminView({ sites, currentUserId, onLogout, showToast })
       </div>
 
       {tab === "comptes" ? (
-        <ComptesTab currentUserId={currentUserId} showToast={showToast} />
+        <ComptesTab showToast={showToast} />
       ) : (
         <AffectationsTab sites={sites} currentUserId={currentUserId} showToast={showToast} />
       )}
@@ -54,7 +54,7 @@ export default function AdminView({ sites, currentUserId, onLogout, showToast })
 }
 
 // ============================ Onglet Comptes ============================
-function ComptesTab({ currentUserId, showToast }) {
+function ComptesTab({ showToast }) {
   const [users, setUsers] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -63,14 +63,15 @@ function ComptesTab({ currentUserId, showToast }) {
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
 
-  // Modales
-  const [pwFor, setPwFor] = useState(null); // { id, username }
-  const [delFor, setDelFor] = useState(null); // { id, username }
+  // Compte en cours de gestion (popup)
+  const [manage, setManage] = useState(null);
 
   async function load() {
     setError("");
     try {
-      setUsers(await admin.listUsers());
+      const all = await admin.listUsers();
+      // On n'affiche QUE les techniciens (pas les comptes admin).
+      setUsers(all.filter((u) => !u.isAdmin));
     } catch (e) {
       setError(e.message);
       setUsers([]);
@@ -131,68 +132,35 @@ function ComptesTab({ currentUserId, showToast }) {
 
       {error && <p className="text-[#ff8a8a] text-sm mb-3">{error}</p>}
 
-      {/* Liste */}
+      {/* Liste : juste les noms, cliquables → popup de gestion */}
       {users === null ? (
         <p className="text-[#7d868d] text-sm">Chargement…</p>
       ) : users.length === 0 ? (
-        <p className="text-[#7d868d] text-sm">Aucun compte.</p>
+        <p className="text-[#7d868d] text-sm">Aucun technicien.</p>
       ) : (
         <div className="border border-[#272d32] rounded-xl overflow-hidden">
           {users.map((u, i) => (
-            <div
+            <button
               key={u.id}
-              className={`flex items-center gap-3 px-4 py-3 ${i !== users.length - 1 ? "border-b border-[#272d32]" : ""}`}
+              onClick={() => setManage(u)}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[#15191c] transition-colors ${
+                i !== users.length - 1 ? "border-b border-[#272d32]" : ""
+              }`}
             >
-              <div className="min-w-0 flex-1">
-                <p className="text-white text-sm font-semibold flex items-center gap-2">
-                  {u.username}
-                  {u.isAdmin && (
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-[#2b7fff] bg-[#2b7fff]/10 px-1.5 py-0.5 rounded">
-                      admin
-                    </span>
-                  )}
-                </p>
-              </div>
-              {!u.isAdmin && (
-                <button
-                  onClick={() => setPwFor(u)}
-                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border border-[#272d32] hover:border-[#3a4147] text-[#c2c8cd] hover:text-white transition-colors"
-                  title="Changer le mot de passe"
-                >
-                  <KeyRound size={15} />
-                </button>
-              )}
-              {u.id !== currentUserId && !u.isAdmin && (
-                <button
-                  onClick={() => setDelFor(u)}
-                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border border-[#272d32] hover:border-[#ef4444]/50 text-[#c2c8cd] hover:text-[#ef4444] transition-colors"
-                  title="Supprimer le compte"
-                >
-                  <Trash2 size={15} />
-                </button>
-              )}
-            </div>
+              <span className="min-w-0 flex-1 text-white text-sm font-semibold truncate">{u.username}</span>
+              <ChevronRight size={16} className="text-[#7d868d] shrink-0" />
+            </button>
           ))}
         </div>
       )}
 
-      {pwFor && (
-        <PasswordModal
-          user={pwFor}
-          onClose={() => setPwFor(null)}
-          onDone={() => {
-            setPwFor(null);
-            showToast("Mot de passe modifié");
-          }}
-        />
-      )}
-      {delFor && (
-        <DeleteModal
-          user={delFor}
-          onClose={() => setDelFor(null)}
-          onDone={async () => {
-            setDelFor(null);
-            showToast("Compte supprimé");
+      {manage && (
+        <ManageUserModal
+          user={manage}
+          onClose={() => setManage(null)}
+          onChanged={async (msg) => {
+            setManage(null);
+            showToast(msg);
             await load();
           }}
         />
@@ -201,84 +169,103 @@ function ComptesTab({ currentUserId, showToast }) {
   );
 }
 
-function PasswordModal({ user, onClose, onDone }) {
+// Popup de gestion d'un technicien : renommer, changer le mot de passe, supprimer.
+function ManageUserModal({ user, onClose, onChanged }) {
+  const [name, setName] = useState(user.username);
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmDel, setConfirmDel] = useState(false);
 
-  async function submit(e) {
-    e.preventDefault();
+  async function run(fn, successMsg) {
     setBusy(true);
     setError("");
     try {
-      await admin.setUserPassword(user.id, pw);
-      onDone();
+      await fn();
+      onChanged(successMsg);
     } catch (e) {
       setError(e.message);
       setBusy(false);
     }
   }
 
+  const nameChanged = name.trim() && name.trim() !== user.username;
+
   return (
-    <ModalWrap title={`Mot de passe — ${user.username}`} onClose={onClose}>
-      <form onSubmit={submit}>
+    <ModalWrap title={user.username} onClose={onClose}>
+      {error && <p className="text-[#ff8a8a] text-sm mb-3">{error}</p>}
+
+      {/* Renommer */}
+      <label className="block text-[#c2c8cd] text-xs font-semibold mb-1.5">Nom d'utilisateur</label>
+      <div className="flex gap-2 mb-4">
         <input
-          autoFocus
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          placeholder="Nouveau mot de passe (6 min.)"
-          type="text"
-          className="modal-input w-full"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoCapitalize="none"
+          autoCorrect="off"
+          className="modal-input flex-1"
         />
-        {error && <p className="text-[#ff8a8a] text-sm mt-2">{error}</p>}
-        <div className="flex gap-2 mt-4">
-          <button type="button" onClick={onClose} className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2.5 rounded-lg hover:bg-[#15191c]">
-            Annuler
-          </button>
-          <button type="submit" disabled={busy || pw.length < 6} className="btn-accent flex-1 font-semibold text-sm py-2.5 rounded-lg disabled:opacity-40">
-            {busy ? "…" : "Enregistrer"}
-          </button>
-        </div>
-      </form>
-    </ModalWrap>
-  );
-}
-
-function DeleteModal({ user, onClose, onDone }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function confirm() {
-    setBusy(true);
-    setError("");
-    try {
-      await admin.deleteUser(user.id);
-      onDone();
-    } catch (e) {
-      setError(e.message);
-      setBusy(false);
-    }
-  }
-
-  return (
-    <ModalWrap title="Supprimer ce compte ?" onClose={onClose}>
-      <p className="text-[#aab3ba] text-sm mb-1">
-        Le compte <span className="text-white font-semibold">{user.username}</span> sera supprimé
-        définitivement. Ses affectations de sites seront retirées.
-      </p>
-      {error && <p className="text-[#ff8a8a] text-sm mt-2">{error}</p>}
-      <div className="flex gap-2 mt-4">
-        <button onClick={onClose} className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2.5 rounded-lg hover:bg-[#15191c]">
-          Annuler
-        </button>
         <button
-          onClick={confirm}
-          disabled={busy}
-          className="flex-1 bg-[#ef4444] text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-[#dc2626] disabled:opacity-40"
+          onClick={() => run(() => admin.setUsername(user.id, name.trim()), "Nom modifié")}
+          disabled={busy || !nameChanged}
+          className="btn-accent font-semibold text-sm px-3.5 rounded-lg disabled:opacity-40 shrink-0"
         >
-          {busy ? "…" : "Supprimer"}
+          OK
         </button>
       </div>
+
+      {/* Mot de passe */}
+      <label className="block text-[#c2c8cd] text-xs font-semibold mb-1.5">Nouveau mot de passe</label>
+      <div className="flex gap-2 mb-5">
+        <input
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          placeholder="6 caractères min."
+          type="text"
+          className="modal-input flex-1"
+        />
+        <button
+          onClick={() => run(() => admin.setUserPassword(user.id, pw), "Mot de passe modifié")}
+          disabled={busy || pw.length < 6}
+          className="btn-accent font-semibold text-sm px-3.5 rounded-lg disabled:opacity-40 shrink-0"
+        >
+          OK
+        </button>
+      </div>
+
+      {/* Supprimer */}
+      {!confirmDel ? (
+        <button
+          onClick={() => setConfirmDel(true)}
+          disabled={busy}
+          className="w-full flex items-center justify-center gap-1.5 border border-[#272d32] text-[#ef4444] hover:border-[#ef4444]/50 hover:bg-[#ef4444]/5 font-semibold text-sm py-2.5 rounded-lg transition-colors disabled:opacity-40"
+        >
+          <Trash2 size={15} />
+          Supprimer le compte
+        </button>
+      ) : (
+        <div className="border border-[#ef4444]/30 rounded-lg p-3">
+          <p className="text-[#aab3ba] text-sm mb-3">
+            Supprimer <span className="text-white font-semibold">{user.username}</span> définitivement ?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmDel(false)}
+              disabled={busy}
+              className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2 rounded-lg hover:bg-[#15191c]"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => run(() => admin.deleteUser(user.id), "Compte supprimé")}
+              disabled={busy}
+              className="flex-1 bg-[#ef4444] text-white font-semibold text-sm py-2 rounded-lg hover:bg-[#dc2626] disabled:opacity-40"
+            >
+              {busy ? "…" : "Supprimer"}
+            </button>
+          </div>
+        </div>
+      )}
     </ModalWrap>
   );
 }
@@ -295,7 +282,7 @@ function AffectationsTab({ sites, currentUserId, showToast }) {
     setError("");
     try {
       const [u, a] = await Promise.all([admin.listUsers(), admin.listAssignments()]);
-      setUsers(u);
+      setUsers(u.filter((x) => !x.isAdmin)); // que les techniciens
       setAssignments(a);
     } catch (e) {
       setError(e.message);
