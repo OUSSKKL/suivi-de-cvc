@@ -8,7 +8,7 @@ import MapPreview from "./MapPreview";
 import EmptyState from "../shared/EmptyState";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, onShowAdmin, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, canManageSites, onShowAdmin, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
@@ -95,16 +95,18 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             className="peer w-full bg-[#15191c] border border-[#272d32] rounded-lg pl-9 pr-3 py-2.5 text-base placeholder-[#7d868d] text-[#ffffff] transition-all focus:border-[#2b7fff] focus:shadow-[0_0_0_3px_rgba(43,127,255,0.12)] focus:outline-none"
           />
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg shrink-0"
-        >
-          <Plus size={17} strokeWidth={2.5} />
-          <span className="hidden sm:inline">Site</span>
-        </button>
+        {canManageSites && (
+          <button
+            onClick={() => setShowAdd(true)}
+            className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg shrink-0"
+          >
+            <Plus size={17} strokeWidth={2.5} />
+            <span className="hidden sm:inline">Site</span>
+          </button>
+        )}
       </div>
 
-      {sites.length > 0 && (
+      {sites.length > 0 && canManageSites && (
         <p className="text-[10px] text-[#5a6168] text-center -mt-3 mb-4">
           Balayer vers la gauche pour supprimer le site
         </p>
@@ -116,13 +118,19 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             <Building2 size={26} className="text-[#2b7fff]/80" />
           </div>
           <p className="text-[#e4e7ea] font-medium mb-1">Aucun site pour le moment</p>
-          <p className="text-[#929ba2] text-sm mb-4">Ajoute ton premier bâtiment pour commencer le suivi.</p>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="text-[#2b7fff] text-sm font-semibold underline underline-offset-2"
-          >
-            Ajouter un site
-          </button>
+          <p className="text-[#929ba2] text-sm mb-4">
+            {canManageSites
+              ? "Ajoute ton premier bâtiment pour commencer le suivi."
+              : "Aucun site ne t'a encore été affecté par l'administrateur."}
+          </p>
+          {canManageSites && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="text-[#2b7fff] text-sm font-semibold underline underline-offset-2"
+            >
+              Ajouter un site
+            </button>
+          )}
         </div>
       )}
 
@@ -145,6 +153,7 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
             showStatus={lastReadingBySite !== null}
             onOpen={() => onOpen(s.id)}
             onDelete={() => onDelete(s.id)}
+            canDelete={canManageSites}
           />
         ))}
       </div>

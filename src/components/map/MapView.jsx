@@ -27,7 +27,7 @@ function statusIcon(color) {
   });
 }
 
-export default function MapView({ sites, onBack }) {
+export default function MapView({ sites, onBack, canManage = false }) {
   const mapRef = useRef(null);
   const mapInst = useRef(null);
   const markers = useRef(null);
@@ -50,6 +50,12 @@ export default function MapView({ sites, onBack }) {
     const icoClock =
       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
+    // Bouton "Retirer de la carte" réservé à l'admin (les techniciens ne
+    // peuvent pas modifier les sites).
+    const delBtn = canManage
+      ? `<button class="pp-btn pp-del" title="Retirer de la carte">${icoTrash}</button>`
+      : "";
+
     const el = document.createElement("div");
     el.innerHTML =
       `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">` +
@@ -59,7 +65,7 @@ export default function MapView({ sites, onBack }) {
       `<div style="display:flex;align-items:center;gap:6px;color:#9aa3a9;font-size:11.5px;margin-bottom:11px">${icoClock}<span>${lastReleveText(lastDate)}</span></div>` +
       `<div style="display:flex;gap:7px">` +
       `<button class="pp-btn pp-waze">${icoNav}<span>Itinéraire</span></button>` +
-      `<button class="pp-btn pp-del" title="Retirer de la carte">${icoTrash}</button>` +
+      delBtn +
       `</div>`;
 
     el.querySelector(".pp-waze").addEventListener("click", () => {
@@ -68,11 +74,15 @@ export default function MapView({ sites, onBack }) {
       // ouvrir l'app Waze au lieu d'un onglet vide dans le navigateur.
       window.location.href = `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`;
     });
-    el.querySelector(".pp-del").addEventListener("click", () => {
-      removeSiteCoord(site.name);
-      marker.closePopup();
-      renderMarkers();
-    });
+    const delEl = el.querySelector(".pp-del");
+    if (delEl) {
+      delEl.addEventListener("click", () => {
+        removeSiteCoord(site.name);
+        db.updateSiteCoord(site.id, null).catch(() => {}); // partagé en base
+        marker.closePopup();
+        renderMarkers();
+      });
+    }
     return el;
   }
 
@@ -90,24 +100,27 @@ export default function MapView({ sites, onBack }) {
       tally[status]++;
       if (filterMode === "late" && status !== "orange") continue;
       if (filterMode === "critical" && status !== "red") continue;
-      const marker = L.marker([c.lat, c.lng], { draggable: true, icon: statusIcon(STATUS_COLORS[status]) }).addTo(markers.current);
+      const marker = L.marker([c.lat, c.lng], { draggable: canManage, icon: statusIcon(STATUS_COLORS[status]) }).addTo(markers.current);
       marker.bindPopup(buildPopup(site, marker, lastBySite.current[site.id], status), {
         className: "site-popup",
         minWidth: 210,
         offset: [0, -4],
       });
-      // Verrouillé par défaut : on ne peut déplacer un point qu'après avoir
-      // cliqué dessus (sélection du site concerné).
-      marker.dragging.disable();
-      marker.on("click", () => {
-        for (const mk of all) mk.dragging.disable();
-        marker.dragging.enable();
-      });
-      marker.on("dragend", () => {
-        const p = marker.getLatLng();
-        setSiteCoord(site.name, { lat: p.lat, lng: p.lng });
-      });
-      all.push(marker);
+      // Déplacement réservé à l'admin. Verrouillé par défaut : on ne peut
+      // déplacer un point qu'après avoir cliqué dessus (sélection du site).
+      if (canManage) {
+        marker.dragging.disable();
+        marker.on("click", () => {
+          for (const mk of all) mk.dragging.disable();
+          marker.dragging.enable();
+        });
+        marker.on("dragend", () => {
+          const p = marker.getLatLng();
+          setSiteCoord(site.name, { lat: p.lat, lng: p.lng });
+          db.updateSiteCoord(site.id, { lat: p.lat, lng: p.lng }).catch(() => {}); // partagé en base
+        });
+        all.push(marker);
+      }
       bounds.push([c.lat, c.lng]);
     }
     setPlaced(tally.green + tally.orange + tally.red);
@@ -182,13 +195,15 @@ export default function MapView({ sites, onBack }) {
           </div>
           <h1 className="font-display text-2xl font-extrabold text-white">Carte des sites</h1>
         </div>
-        <button
-          onClick={() => setWizard(true)}
-          className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg shrink-0"
-        >
-          <Plus size={17} strokeWidth={2.5} />
-          Ajouter
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setWizard(true)}
+            className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg shrink-0"
+          >
+            <Plus size={17} strokeWidth={2.5} />
+            Ajouter
+          </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">

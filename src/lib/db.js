@@ -11,6 +11,8 @@ function mapSite(row) {
     remark: row.remark || "",
     order: row.order,
     kits: row.kits ?? 0,
+    lat: row.lat ?? null,
+    lng: row.lng ?? null,
     createdAt: row.created_at,
   };
 }
@@ -66,14 +68,24 @@ export async function listSites() {
   return data.map(mapSite);
 }
 
-export async function createSite(name, address) {
-  const { data, error } = await supabase
-    .from("sites")
-    .insert({ id: uid(), name, address })
-    .select()
-    .single();
+export async function createSite(name, address, coords) {
+  const row = { id: uid(), name, address };
+  if (coords) {
+    row.lat = coords.lat;
+    row.lng = coords.lng;
+  }
+  const { data, error } = await supabase.from("sites").insert(row).select().single();
   if (error) throw error;
   return mapSite(data);
+}
+
+// Position carte du site, partagée entre tous les utilisateurs (null = retirer).
+export async function updateSiteCoord(id, coords) {
+  const { error } = await supabase
+    .from("sites")
+    .update({ lat: coords?.lat ?? null, lng: coords?.lng ?? null })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function deleteSite(id) {

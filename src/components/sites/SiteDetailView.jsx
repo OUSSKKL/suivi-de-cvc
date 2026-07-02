@@ -5,7 +5,7 @@ import ChaudieresTab from "../chaudieres/ChaudieresTab";
 import PhotosTab from "../photos/PhotosTab";
 import AddSiteModal from "./AddSiteModal";
 
-export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange, onRename, onSaveRemark }) {
+export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange, onRename, onSaveRemark, canEdit }) {
   const [editing, setEditing] = useState(false);
   const tabs = [
     { id: "compteurs", label: "Compteurs", icon: Gauge },
@@ -25,14 +25,16 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
         </button>
         <div className="flex items-center gap-2">
           <h1 className="font-display text-2xl font-extrabold text-white truncate">{site.name}</h1>
-          <button
-            onClick={() => setEditing(true)}
-            className="shrink-0 text-[#7d868d] hover:text-[#2b7fff] hover:bg-[#15191c] p-1.5 rounded-lg transition-colors"
-            aria-label="Modifier le nom du site"
-            title="Modifier le nom"
-          >
-            <Pencil size={16} />
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setEditing(true)}
+              className="shrink-0 text-[#7d868d] hover:text-[#2b7fff] hover:bg-[#15191c] p-1.5 rounded-lg transition-colors"
+              aria-label="Modifier le nom du site"
+              title="Modifier le nom"
+            >
+              <Pencil size={16} />
+            </button>
+          )}
         </div>
         {site.address && <p className="text-[#aab3ba] text-sm mt-0.5 mb-3">{site.address}</p>}
         {!site.address && <div className="mb-3" />}

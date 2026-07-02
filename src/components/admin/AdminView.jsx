@@ -1,6 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, Users, MapPin, Plus, Trash2, Check, Search, X, LogOut, ChevronRight } from "lucide-react";
+import { Shield, Users, MapPin, Plus, Trash2, Check, Search, X, LogOut, ChevronRight, Pencil, AlertTriangle } from "lucide-react";
 import * as admin from "../../lib/admin";
+import * as db from "../../lib/db";
+import { setSiteCoord, removeSiteCoord } from "../../utils/siteLocations";
+import AddSiteModal from "../sites/AddSiteModal";
+import AdminMapPreview from "./AdminMapPreview";
+import { releveStatus, STATUS_COLORS } from "../../utils/releveStatus";
+
+// Palette de couleurs par technicien (attribuée dans l'ordre de la liste).
+const TECH_COLORS = [
+  "#2b7fff", "#f59e0b", "#10b981", "#a855f7", "#ef4444",
+  "#ec4899", "#06b6d4", "#84cc16", "#f97316", "#14b8a6",
+];
 
 export default function AdminView({ sites, currentUserId, onLogout, showToast }) {
   const [tab, setTab] = useState("comptes"); // comptes | affectations
@@ -27,7 +38,7 @@ export default function AdminView({ sites, currentUserId, onLogout, showToast })
       <div className="flex gap-2 mb-5">
         {[
           { id: "comptes", label: "Comptes", icon: Users },
-          { id: "affectations", label: "Sites par tech", icon: MapPin },
+          { id: "affectations", label: "Sites", icon: MapPin },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -47,24 +58,23 @@ export default function AdminView({ sites, currentUserId, onLogout, showToast })
       {tab === "comptes" ? (
         <ComptesTab showToast={showToast} />
       ) : (
-        <AffectationsTab sites={sites} currentUserId={currentUserId} showToast={showToast} />
+        <SitesTab showToast={showToast} />
       )}
     </div>
   );
 }
 
 // ============================ Onglet Comptes ============================
+function initials(name) {
+  const s = (name || "").trim();
+  return s.slice(0, 2).toUpperCase() || "?";
+}
+
 function ComptesTab({ showToast }) {
   const [users, setUsers] = useState(null);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  // Formulaire création
-  const [newUser, setNewUser] = useState("");
-  const [newPass, setNewPass] = useState("");
-
-  // Compte en cours de gestion (popup)
-  const [manage, setManage] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [manage, setManage] = useState(null); // compte en cours de gestion
 
   async function load() {
     setError("");
@@ -81,79 +91,76 @@ function ComptesTab({ showToast }) {
     load();
   }, []);
 
-  async function handleCreate(e) {
-    e.preventDefault();
-    if (!newUser.trim() || !newPass) return;
-    setBusy(true);
-    setError("");
-    try {
-      await admin.createUser(newUser.trim(), newPass);
-      setNewUser("");
-      setNewPass("");
-      showToast("Compte créé");
-      await load();
-    } catch (e) {
-      setError(e.message);
-    }
-    setBusy(false);
-  }
+  // Une couleur par technicien (cohérente avec l'onglet Sites).
+  const colorByUser = useMemo(() => {
+    const m = {};
+    (users || []).forEach((u, i) => (m[u.id] = TECH_COLORS[i % TECH_COLORS.length]));
+    return m;
+  }, [users]);
 
   return (
     <div>
-      {/* Création */}
-      <form onSubmit={handleCreate} className="border border-[#272d32] rounded-xl bg-[#15191c] p-4 mb-5">
-        <p className="text-white text-sm font-bold mb-3">Nouveau compte</p>
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          <input
-            value={newUser}
-            onChange={(e) => setNewUser(e.target.value)}
-            placeholder="Nom d'utilisateur"
-            autoCapitalize="none"
-            autoCorrect="off"
-            className="modal-input"
-          />
-          <input
-            value={newPass}
-            onChange={(e) => setNewPass(e.target.value)}
-            placeholder="Mot de passe (6 min.)"
-            type="text"
-            className="modal-input"
-          />
-        </div>
+      {/* En-tête : compteur + bouton créer */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <p className="text-[#c2c8cd] text-sm font-medium">
+          {users === null ? "…" : `${users.length} technicien${users.length > 1 ? "s" : ""}`}
+        </p>
         <button
-          type="submit"
-          disabled={busy || !newUser.trim() || newPass.length < 6}
-          className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg mt-3 disabled:opacity-40"
+          onClick={() => setCreating(true)}
+          className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg shrink-0"
         >
           <Plus size={16} strokeWidth={2.5} />
-          Créer le compte
+          Nouveau compte
         </button>
-      </form>
+      </div>
 
       {error && <p className="text-[#ff8a8a] text-sm mb-3">{error}</p>}
 
-      {/* Liste : juste les noms, cliquables → popup de gestion */}
+      {/* Grille de cartes techniciens */}
       {users === null ? (
         <p className="text-[#7d868d] text-sm">Chargement…</p>
       ) : users.length === 0 ? (
-        <p className="text-[#7d868d] text-sm">Aucun technicien.</p>
+        <div className="border border-dashed border-[#272d32] rounded-xl p-8 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#2b7fff]/10 flex items-center justify-center mx-auto mb-3">
+            <Users size={22} className="text-[#2b7fff]/80" />
+          </div>
+          <p className="text-[#e4e7ea] font-medium mb-1">Aucun technicien</p>
+          <p className="text-[#929ba2] text-sm">Crée un premier compte avec le bouton ci-dessus.</p>
+        </div>
       ) : (
-        <div className="border border-[#272d32] rounded-xl overflow-hidden">
-          {users.map((u, i) => (
-            <button
-              key={u.id}
-              onClick={() => setManage(u)}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[#15191c] transition-colors ${
-                i !== users.length - 1 ? "border-b border-[#272d32]" : ""
-              }`}
-            >
-              <span className="min-w-0 flex-1 text-white text-sm font-semibold truncate">{u.username}</span>
-              <ChevronRight size={16} className="text-[#7d868d] shrink-0" />
-            </button>
-          ))}
+        <div className="grid sm:grid-cols-2 gap-2.5">
+          {users.map((u) => {
+            const color = colorByUser[u.id];
+            return (
+              <button
+                key={u.id}
+                onClick={() => setManage(u)}
+                className="group flex items-center gap-3 p-3 rounded-xl border border-[#272d32] bg-[#15191c] hover:border-[#3a4147] hover:-translate-y-0.5 hover:shadow-card transition-all text-left"
+              >
+                <span
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ring-1"
+                  style={{ background: `${color}1f`, color, borderColor: `${color}33`, boxShadow: `inset 0 0 0 1px ${color}33` }}
+                >
+                  {initials(u.username)}
+                </span>
+                <span className="min-w-0 flex-1 text-white text-sm font-semibold truncate">{u.username}</span>
+                <ChevronRight size={16} className="text-[#7d868d] group-hover:text-[#c2c8cd] shrink-0 transition-colors" />
+              </button>
+            );
+          })}
         </div>
       )}
 
+      {creating && (
+        <CreateUserModal
+          onClose={() => setCreating(false)}
+          onCreated={async () => {
+            setCreating(false);
+            showToast("Compte créé");
+            await load();
+          }}
+        />
+      )}
       {manage && (
         <ManageUserModal
           user={manage}
@@ -166,6 +173,61 @@ function ComptesTab({ showToast }) {
         />
       )}
     </div>
+  );
+}
+
+function CreateUserModal({ onClose, onCreated }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!username.trim() || password.length < 6) return;
+    setBusy(true);
+    setError("");
+    try {
+      await admin.createUser(username.trim(), password);
+      onCreated();
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ModalWrap title="Nouveau compte" onClose={onClose}>
+      <form onSubmit={submit}>
+        <label className="block text-[#c2c8cd] text-xs font-semibold mb-1.5">Nom d'utilisateur</label>
+        <input
+          autoFocus
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="ex : moha"
+          autoCapitalize="none"
+          autoCorrect="off"
+          className="modal-input w-full mb-3"
+        />
+        <label className="block text-[#c2c8cd] text-xs font-semibold mb-1.5">Mot de passe</label>
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="6 caractères minimum"
+          type="text"
+          className="modal-input w-full"
+        />
+        {error && <p className="text-[#ff8a8a] text-sm mt-2">{error}</p>}
+        <div className="flex gap-2 mt-4">
+          <button type="button" onClick={onClose} className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2.5 rounded-lg hover:bg-[#15191c]">
+            Annuler
+          </button>
+          <button type="submit" disabled={busy || !username.trim() || password.length < 6} className="btn-accent flex-1 font-semibold text-sm py-2.5 rounded-lg disabled:opacity-40">
+            {busy ? "…" : "Créer"}
+          </button>
+        </div>
+      </form>
+    </ModalWrap>
   );
 }
 
@@ -270,135 +332,443 @@ function ManageUserModal({ user, onClose, onChanged }) {
   );
 }
 
-// ========================= Onglet Affectations =========================
-function AffectationsTab({ sites, currentUserId, showToast }) {
-  const [users, setUsers] = useState(null);
-  const [assignments, setAssignments] = useState(null); // [{site_id, user_id}]
-  const [selectedUser, setSelectedUser] = useState(null);
+// ============================== Onglet Sites ==============================
+// Réservé à l'admin : ajouter des sites, les renommer (adresses réelles), et
+// les affecter aux techniciens. "Tous" affiche l'ensemble des sites ; un
+// technicien affiche seulement les siens.
+function SitesTab({ showToast }) {
+  const [sites, setSites] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [lastBySite, setLastBySite] = useState({}); // siteId -> date du dernier relevé
+  const [target, setTarget] = useState("all"); // "all" | userId
+  const [allColorMode, setAllColorMode] = useState("tech"); // "tech" | "releve" (vue Tous)
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [manage, setManage] = useState(null); // site en cours de gestion
+  const [pendingAdd, setPendingAdd] = useState(null); // doublon en attente de confirmation
 
   async function load() {
     setError("");
     try {
-      const [u, a] = await Promise.all([admin.listUsers(), admin.listAssignments()]);
-      setUsers(u.filter((x) => !x.isAdmin)); // que les techniciens
+      const [s, u, a, releves] = await Promise.all([
+        db.listSites(),
+        admin.listUsers(),
+        admin.listAssignments(),
+        db.listAllReleves(),
+      ]);
+      setSites(s);
+      setUsers(u.filter((x) => !x.isAdmin));
       setAssignments(a);
+      const last = {};
+      for (const r of releves) if (!last[r.siteId] || r.date > last[r.siteId]) last[r.siteId] = r.date;
+      setLastBySite(last);
     } catch (e) {
       setError(e.message);
-      setUsers([]);
-      setAssignments([]);
+      setSites([]);
     }
   }
   useEffect(() => {
     load();
   }, []);
 
-  const assignedSet = useMemo(() => {
-    const s = new Set();
-    if (assignments && selectedUser) {
-      for (const a of assignments) if (a.user_id === selectedUser) s.add(a.site_id);
-    }
-    return s;
-  }, [assignments, selectedUser]);
-
   const countByUser = useMemo(() => {
     const m = {};
-    for (const a of assignments || []) m[a.user_id] = (m[a.user_id] || 0) + 1;
+    for (const a of assignments) m[a.user_id] = (m[a.user_id] || 0) + 1;
     return m;
   }, [assignments]);
 
-  async function toggle(siteId) {
-    if (!selectedUser) return;
-    const isOn = assignedSet.has(siteId);
-    // maj optimiste
-    setAssignments((prev) =>
-      isOn
-        ? prev.filter((a) => !(a.site_id === siteId && a.user_id === selectedUser))
-        : [...prev, { site_id: siteId, user_id: selectedUser }]
-    );
+  // Une couleur par technicien (dans l'ordre de la liste).
+  const colorByUser = useMemo(() => {
+    const m = {};
+    users.forEach((u, i) => (m[u.id] = TECH_COLORS[i % TECH_COLORS.length]));
+    return m;
+  }, [users]);
+
+  // Techniciens affectés à chaque site (pour les pastilles de couleur).
+  const techsBySite = useMemo(() => {
+    const m = {};
+    for (const a of assignments) (m[a.site_id] = m[a.site_id] || []).push(a.user_id);
+    return m;
+  }, [assignments]);
+
+  // Détection des doublons : combien de sites portent chaque nom (normalisé).
+  const nameCounts = useMemo(() => {
+    const m = {};
+    for (const s of sites || []) {
+      const k = s.name.trim().toUpperCase();
+      m[k] = (m[k] || 0) + 1;
+    }
+    return m;
+  }, [sites]);
+  const isDup = (name) => (nameCounts[name.trim().toUpperCase()] || 0) > 1;
+  const dupGroups = useMemo(() => Object.values(nameCounts).filter((n) => n > 1).length, [nameCounts]);
+
+  const assignedForTarget = useMemo(() => {
+    const set = new Set();
+    if (target !== "all") for (const a of assignments) if (a.user_id === target) set.add(a.site_id);
+    return set;
+  }, [assignments, target]);
+
+  const visibleSites = useMemo(() => {
+    let list = [...(sites || [])].sort((a, b) => a.name.localeCompare(b.name));
+    if (target !== "all") list = list.filter((s) => assignedForTarget.has(s.id));
+    const q = search.toLowerCase();
+    return list.filter((s) => s.name.toLowerCase().includes(q));
+  }, [sites, target, assignedForTarget, search]);
+
+  // Points géolocalisés du filtre courant.
+  //  - "Tous" : coloré par technicien (pour distinguer qui gère quoi).
+  //  - un technicien : coloré par statut de relevé (vert/orange/rouge), comme
+  //    la carte que voit ce technicien.
+  const mapPoints = useMemo(() => {
+    const pts = [];
+    for (const s of visibleSites) {
+      if (s.lat == null || s.lng == null) continue;
+      let color;
+      if (target === "all" && allColorMode === "tech") {
+        const uid = techsBySite[s.id]?.[0];
+        color = uid ? colorByUser[uid] : "#7d868d";
+      } else {
+        // Vue technicien (toujours) ou "Tous" en mode relevé → couleur de statut.
+        color = STATUS_COLORS[releveStatus(lastBySite[s.id])];
+      }
+      pts.push({ lat: s.lat, lng: s.lng, color, name: s.name, last: lastBySite[s.id] || null });
+    }
+    return pts;
+  }, [visibleSites, techsBySite, colorByUser, target, allColorMode, lastBySite]);
+
+  // Crée réellement le site (après contrôle de doublon).
+  async function createNow(clean, coords) {
     try {
-      if (isOn) await admin.unassignSite(siteId, selectedUser);
-      else await admin.assignSite(siteId, selectedUser);
+      const site = await db.createSite(clean, "", coords);
+      if (coords) setSiteCoord(clean, coords);
+      if (target !== "all") await admin.assignSite(site.id, target);
+      showToast("Site ajouté");
+      await load();
     } catch (e) {
       setError(e.message);
-      await load(); // resynchronise en cas d'échec
     }
   }
 
-  const sortedSites = useMemo(
-    () => [...(sites || [])].sort((a, b) => a.name.localeCompare(b.name)),
-    [sites]
-  );
-  const filtered = sortedSites.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
+  async function handleAdd(name, coords) {
+    const clean = name.trim().toUpperCase();
+    setAdding(false);
+    // Si un site du même nom existe déjà → on demande confirmation.
+    if ((nameCounts[clean] || 0) > 0) {
+      setPendingAdd({ name: clean, coords });
+      return;
+    }
+    await createNow(clean, coords);
+  }
 
-  if (error) return <p className="text-[#ff8a8a] text-sm">{error}</p>;
-  if (users === null) return <p className="text-[#7d868d] text-sm">Chargement…</p>;
+  if (sites === null) return <p className="text-[#7d868d] text-sm">Chargement…</p>;
+
+  const targetName = target === "all" ? "Tous" : users.find((u) => u.id === target)?.username;
 
   return (
     <div>
-      {/* Choix du technicien */}
-      <p className="text-white text-sm font-bold mb-2">Technicien</p>
-      <div className="flex flex-wrap gap-2 mb-5">
+      {error && <p className="text-[#ff8a8a] text-sm mb-3">{error}</p>}
+
+      {/* Sélecteur : Tous + techniciens */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Chip label="Tous" count={sites.length} active={target === "all"} onClick={() => setTarget("all")} />
         {users.map((u) => (
-          <button
+          <Chip
             key={u.id}
-            onClick={() => setSelectedUser(u.id)}
-            className={`text-sm font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
-              selectedUser === u.id
-                ? "bg-[#2b7fff]/10 border-[#2b7fff]/30 text-[#2b7fff]"
-                : "border-[#272d32] text-[#c2c8cd] hover:bg-[#15191c]"
-            }`}
-          >
-            {u.username}
-            <span className="ml-1.5 text-[#7d868d] tabular-nums">{countByUser[u.id] || 0}</span>
-          </button>
+            label={u.username}
+            count={countByUser[u.id] || 0}
+            color={colorByUser[u.id]}
+            active={target === u.id}
+            onClick={() => setTarget(u.id)}
+          />
         ))}
       </div>
 
-      {!selectedUser ? (
-        <p className="text-[#7d868d] text-sm">Choisis un technicien pour gérer ses sites.</p>
-      ) : (
-        <>
-          <div className="relative mb-3">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7d868d]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un site…"
-              className="w-full bg-[#15191c] border border-[#272d32] rounded-lg pl-9 pr-3 py-2.5 text-base placeholder-[#7d868d] text-white focus:border-[#2b7fff] focus:outline-none"
+      {/* Aperçu carte : bascule couleur seulement sur "Tous" ; un technicien
+          est toujours affiché par statut de relevé. */}
+      <AdminMapPreview
+        points={mapPoints}
+        colorMode={allColorMode}
+        onColorMode={target === "all" ? setAllColorMode : null}
+      />
+
+      {/* Ajouter un site */}
+      <button
+        onClick={() => setAdding(true)}
+        className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-2.5 rounded-lg mb-4"
+      >
+        <Plus size={16} strokeWidth={2.5} />
+        Ajouter un site{target !== "all" ? ` pour ${targetName}` : ""}
+      </button>
+
+      {/* Alerte doublons */}
+      {dupGroups > 0 && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-lg border border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b] text-sm">
+          <AlertTriangle size={16} className="shrink-0" />
+          {dupGroups} doublon{dupGroups > 1 ? "s" : ""} dans la liste (même adresse en plusieurs exemplaires).
+        </div>
+      )}
+
+      {/* Recherche */}
+      <div className="relative mb-3">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7d868d]" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un site…"
+          className="w-full bg-[#15191c] border border-[#272d32] rounded-lg pl-9 pr-3 py-2.5 text-base placeholder-[#7d868d] text-white focus:border-[#2b7fff] focus:outline-none"
+        />
+      </div>
+      <p className="text-[11px] text-[#7d868d] mb-2">
+        {visibleSites.length} site(s){target !== "all" ? " affecté(s)" : ""} · touche un site pour le gérer
+      </p>
+
+      {/* Liste des sites */}
+      <div className="border border-[#272d32] rounded-xl overflow-hidden">
+        {visibleSites.map((s, i) => (
+          <button
+            key={s.id}
+            onClick={() => setManage(s)}
+            style={{ borderLeft: `4px solid ${techsBySite[s.id]?.length ? colorByUser[techsBySite[s.id][0]] : "transparent"}` }}
+            className={`w-full flex items-center gap-3 pl-3 pr-4 py-3.5 text-left hover:bg-[#15191c] transition-colors ${
+              i !== visibleSites.length - 1 ? "border-b border-[#272d32]" : ""
+            }`}
+          >
+            <MapPin
+              size={15}
+              className={`shrink-0 ${s.lat != null ? "text-[#2b7fff]" : "text-[#4a5157]"}`}
             />
-          </div>
-          <p className="text-[11px] text-[#7d868d] mb-2">
-            {assignedSet.size} site(s) affecté(s) · touche un site pour l'ajouter/retirer
-          </p>
-          <div className="border border-[#272d32] rounded-xl overflow-hidden">
-            {filtered.map((s, i) => {
-              const on = assignedSet.has(s.id);
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => toggle(s.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                    i !== filtered.length - 1 ? "border-b border-[#272d32]" : ""
-                  } ${on ? "bg-[#2b7fff]/5" : "hover:bg-[#15191c]"}`}
-                >
+            <span className="min-w-0 flex-1 text-white text-sm font-medium truncate">{s.name}</span>
+            {isDup(s.name) && (
+              <span className="flex items-center gap-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#f59e0b] bg-[#f59e0b]/10 px-1.5 py-0.5 rounded">
+                <AlertTriangle size={11} />
+                doublon
+              </span>
+            )}
+            {/* Si plusieurs techniciens : pastilles des autres couleurs. */}
+            {(techsBySite[s.id] || []).length > 1 && (
+              <span className="flex items-center gap-1 shrink-0">
+                {techsBySite[s.id].slice(1).map((uid) => (
                   <span
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                      on ? "bg-[#2b7fff] border-[#2b7fff]" : "border-[#3a4147]"
-                    }`}
-                  >
-                    {on && <Check size={13} className="text-white" strokeWidth={3} />}
-                  </span>
-                  <span className="text-white text-sm font-medium truncate">{s.name}</span>
-                </button>
-              );
-            })}
-            {filtered.length === 0 && <p className="text-[#7d868d] text-sm px-4 py-3">Aucun site.</p>}
+                    key={uid}
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ background: colorByUser[uid] || "#4a5157" }}
+                    title={users.find((u) => u.id === uid)?.username}
+                  />
+                ))}
+              </span>
+            )}
+            <ChevronRight size={16} className="text-[#7d868d] shrink-0" />
+          </button>
+        ))}
+        {visibleSites.length === 0 && <p className="text-[#7d868d] text-sm px-4 py-3">Aucun site.</p>}
+      </div>
+
+      {adding && <AddSiteModal withLocation onCancel={() => setAdding(false)} onSave={handleAdd} />}
+      {pendingAdd && (
+        <ModalWrap title="Site en doublon" onClose={() => setPendingAdd(null)}>
+          <div className="flex items-start gap-2.5 mb-4">
+            <AlertTriangle size={18} className="text-[#f59e0b] shrink-0 mt-0.5" />
+            <p className="text-[#aab3ba] text-sm">
+              Un site nommé <span className="text-white font-semibold">{pendingAdd.name}</span> existe
+              déjà. L'ajouter quand même ?
+            </p>
           </div>
-        </>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPendingAdd(null)}
+              className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2.5 rounded-lg hover:bg-[#15191c]"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={async () => {
+                const p = pendingAdd;
+                setPendingAdd(null);
+                await createNow(p.name, p.coords);
+              }}
+              className="btn-accent flex-1 font-semibold text-sm py-2.5 rounded-lg"
+            >
+              Ajouter quand même
+            </button>
+          </div>
+        </ModalWrap>
+      )}
+      {manage && (
+        <SiteAdminModal
+          site={manage}
+          users={users}
+          assignments={assignments}
+          colorByUser={colorByUser}
+          onClose={() => setManage(null)}
+          onChanged={async (msg, close) => {
+            showToast(msg);
+            await load();
+            if (close) setManage(null);
+          }}
+        />
       )}
     </div>
+  );
+}
+
+function Chip({ label, count, active, color, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+        active ? "bg-[#2b7fff]/10 border-[#2b7fff]/30 text-[#2b7fff]" : "border-[#272d32] text-[#c2c8cd] hover:bg-[#15191c]"
+      }`}
+    >
+      {color && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />}
+      {label}
+      <span className="text-[#7d868d] tabular-nums">{count}</span>
+    </button>
+  );
+}
+
+// Popup de gestion d'un site : renommer (adresses réelles + carte) et affecter
+// aux techniciens.
+function SiteAdminModal({ site, users, assignments, colorByUser = {}, onClose, onChanged }) {
+  const [renaming, setRenaming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const assignedSet = useMemo(
+    () => new Set(assignments.filter((a) => a.site_id === site.id).map((a) => a.user_id)),
+    [assignments, site.id]
+  );
+
+  async function toggle(userId) {
+    setBusy(true);
+    setError("");
+    try {
+      if (assignedSet.has(userId)) await admin.unassignSite(site.id, userId);
+      else await admin.assignSite(site.id, userId);
+      onChanged("Affectation mise à jour", false);
+    } catch (e) {
+      setError(e.message);
+    }
+    setBusy(false);
+  }
+
+  async function handleRename(name, coords) {
+    const clean = name.trim().toUpperCase();
+    const oldName = site.name;
+    try {
+      await db.updateSiteName(site.id, clean);
+      if (coords) {
+        await db.updateSiteCoord(site.id, coords);
+        setSiteCoord(clean, coords);
+      }
+      if (oldName !== clean) removeSiteCoord(oldName);
+      onChanged("Site renommé", true);
+    } catch (e) {
+      setError(e.message);
+      setRenaming(false);
+    }
+  }
+
+  async function handleDelete() {
+    setBusy(true);
+    setError("");
+    try {
+      await db.deleteSite(site.id);
+      removeSiteCoord(site.name);
+      onChanged("Site supprimé", true);
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  }
+
+  if (renaming) {
+    return <AddSiteModal withLocation item={site} onCancel={() => setRenaming(false)} onSave={handleRename} />;
+  }
+
+  return (
+    <ModalWrap title={site.name} onClose={onClose}>
+      {error && <p className="text-[#ff8a8a] text-sm mb-3">{error}</p>}
+
+      <button
+        onClick={() => setRenaming(true)}
+        className="w-full flex items-center justify-center gap-1.5 border border-[#272d32] hover:border-[#2b7fff]/40 text-[#c2c8cd] hover:text-white font-semibold text-sm py-2.5 rounded-lg transition-colors mb-4"
+      >
+        <Pencil size={15} />
+        Renommer l'adresse
+      </button>
+
+      <p className="text-[#c2c8cd] text-xs font-semibold mb-2">Affecté aux techniciens</p>
+      {users.length === 0 ? (
+        <p className="text-[#7d868d] text-sm">Aucun technicien.</p>
+      ) : (
+        <div className="border border-[#272d32] rounded-xl overflow-hidden">
+          {users.map((u, i) => {
+            const on = assignedSet.has(u.id);
+            return (
+              <button
+                key={u.id}
+                onClick={() => toggle(u.id)}
+                disabled={busy}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors disabled:opacity-60 ${
+                  i !== users.length - 1 ? "border-b border-[#272d32]" : ""
+                } ${on ? "bg-[#2b7fff]/5" : "hover:bg-[#15191c]"}`}
+              >
+                <span
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                    on ? "bg-[#2b7fff] border-[#2b7fff]" : "border-[#3a4147]"
+                  }`}
+                >
+                  {on && <Check size={13} className="text-white" strokeWidth={3} />}
+                </span>
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colorByUser[u.id] || "#4a5157" }} />
+                <span className="text-white text-sm font-medium truncate">{u.username}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Supprimer le site */}
+      <div className="mt-5 pt-4 border-t border-[#272d32]">
+        {!confirmDel ? (
+          <button
+            onClick={() => setConfirmDel(true)}
+            disabled={busy}
+            className="w-full flex items-center justify-center gap-1.5 border border-[#272d32] text-[#ef4444] hover:border-[#ef4444]/50 hover:bg-[#ef4444]/5 font-semibold text-sm py-2.5 rounded-lg transition-colors disabled:opacity-40"
+          >
+            <Trash2 size={15} />
+            Supprimer le site
+          </button>
+        ) : (
+          <div className="border border-[#ef4444]/30 rounded-lg p-3">
+            <p className="text-[#aab3ba] text-sm mb-3">
+              Supprimer <span className="text-white font-semibold">{site.name}</span> et toutes ses
+              données (relevés, chaudières, photos) définitivement ?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDel(false)}
+                disabled={busy}
+                className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2 rounded-lg hover:bg-[#15191c]"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={busy}
+                className="flex-1 bg-[#ef4444] text-white font-semibold text-sm py-2 rounded-lg hover:bg-[#dc2626] disabled:opacity-40"
+              >
+                {busy ? "…" : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </ModalWrap>
   );
 }
 

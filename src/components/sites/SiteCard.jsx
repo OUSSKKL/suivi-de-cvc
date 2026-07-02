@@ -3,7 +3,7 @@ import { Trash2, Navigation } from "lucide-react";
 import { releveStatus, STATUS_COLORS } from "../../utils/releveStatus";
 import { getAllSiteCoords } from "../../utils/siteLocations";
 
-export default function SiteCard({ site, lastReading, showStatus, onOpen, onDelete }) {
+export default function SiteCard({ site, lastReading, showStatus, onOpen, onDelete, canDelete = true }) {
   const ACTIONS_WIDTH = 96;
   const status = showStatus ? releveStatus(lastReading) : null;
   const [translateX, setTranslateX] = useState(0);
@@ -54,6 +54,9 @@ export default function SiteCard({ site, lastReading, showStatus, onOpen, onDele
     if (axis.current === null) {
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
       axis.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      // Sans droit de suppression (technicien), on n'autorise pas le swipe
+      // horizontal : le site ne peut pas être supprimé.
+      if (axis.current === "x" && !canDelete) axis.current = "y";
       if (axis.current === "x") e.currentTarget.setPointerCapture?.(e.pointerId);
     }
     if (axis.current === "y") return; // scroll vertical : on laisse le navigateur faire

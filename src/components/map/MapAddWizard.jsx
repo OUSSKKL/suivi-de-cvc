@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import ModalShell from "../shared/ModalShell";
 import { geocodeCandidates } from "../../utils/geocode";
 import { getSiteCoord, setSiteCoord } from "../../utils/siteLocations";
+import * as db from "../../lib/db";
 import { addDarkTiles } from "./darkTiles";
 
 const PIN_ICON = L.divIcon({
@@ -106,6 +107,7 @@ export default function MapAddWizard({ sites, onClose }) {
   function valider() {
     if (coords && site) {
       setSiteCoord(site.name, coords);
+      db.updateSiteCoord(site.id, coords).catch(() => {}); // partagé en base
       setPlaced((n) => n + 1);
     }
     setIndex((i) => i + 1);

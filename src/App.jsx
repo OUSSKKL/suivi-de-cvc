@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import * as db from "./lib/db";
 import { isAdmin as isAdminSession, assignSite } from "./lib/admin";
-import { setSiteCoord } from "./utils/siteLocations";
+import { setSiteCoord, getSiteCoord, removeSiteCoord } from "./utils/siteLocations";
 import AdminView from "./components/admin/AdminView";
 import SiteListView from "./components/sites/SiteListView";
 import TableauView from "./components/tableaux/TableauView";
@@ -76,6 +76,33 @@ export default function App() {
     if (isSupabaseConfigured && session) loadSites();
   }, [session, loadSites]);
 
+  // Synchronise les positions carte entre la BASE (partagée) et le localStorage
+  // (lu par la carte). Deux sens :
+  //  - BASE → local : pour que chaque technicien voie les points placés par
+  //    l'admin (les coords vivent maintenant en base).
+  //  - local → BASE : migration unique de l'existant (ton travail déjà placé
+  //    dans ce navigateur) vers la base. Réservé à l'admin (droits d'écriture).
+  useEffect(() => {
+    if (!sites) return;
+    const admin = isAdminSession(session);
+    (async () => {
+      for (const s of sites) {
+        const local = getSiteCoord(s.name);
+        if (s.lat != null && s.lng != null) {
+          if (!local || local.lat !== s.lat || local.lng !== s.lng) {
+            setSiteCoord(s.name, { lat: s.lat, lng: s.lng });
+          }
+        } else if (local && admin) {
+          try {
+            await db.updateSiteCoord(s.id, local);
+          } catch {
+            /* ligne non modifiable : on ignore */
+          }
+        }
+      }
+    })();
+  }, [sites, session]);
+
   const showToast = useCallback((msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
@@ -109,7 +136,7 @@ export default function App() {
 
   async function addSite(name, coords) {
     const clean = name.trim().toUpperCase();
-    const site = await db.createSite(clean, "");
+    const site = await db.createSite(clean, "", coords);
     // Un technicien ne voit que ses sites affectés : on lui affecte donc
     // automatiquement le site qu'il vient de créer. (L'admin voit déjà tout.)
     if (!isAdminSession(session)) {
@@ -127,8 +154,18 @@ export default function App() {
 
   async function editSite(id, name) {
     const clean = name.trim().toUpperCase();
+    const oldName = sites.find((s) => s.id === id)?.name;
     setSites(sites.map((s) => (s.id === id ? { ...s, name: clean } : s)));
     await db.updateSiteName(id, clean);
+    // Le point sur la carte est indexé par nom : on le transfère vers le
+    // nouveau nom pour que le renommage ne fasse pas perdre l'emplacement.
+    if (oldName && oldName !== clean) {
+      const coord = getSiteCoord(oldName);
+      if (coord) {
+        setSiteCoord(clean, coord);
+        removeSiteCoord(oldName);
+      }
+    }
     showToast("Site modifié");
   }
 
@@ -225,6 +262,7 @@ export default function App() {
           onShowSav={() => navigateTo("sav")}
           onShowFournisseur={() => navigateTo("fournisseur")}
           isAdmin={admin}
+          canManageSites={admin}
           onShowAdmin={() => navigateTo("admin")}
           onLogout={() => supabase.auth.signOut()}
         />
@@ -249,7 +287,7 @@ export default function App() {
 
       {view === "astreinte" && <AstreinteView onBack={goBack} showToast={showToast} />}
 
-      {view === "map" && <MapView sites={sites} onBack={goBack} />}
+      {view === "map" && <MapView sites={sites} onBack={goBack} canManage={admin} />}
 
       {view === "sav" && <SavView onBack={goBack} />}
 
@@ -265,6 +303,7 @@ export default function App() {
           onKitsChange={(kits) => updateKits(activeSite.id, kits)}
           onRename={(name) => editSite(activeSite.id, name)}
           onSaveRemark={(remark) => saveRemark(activeSite.id, remark)}
+          canEdit={admin}
         />
       )}
 
