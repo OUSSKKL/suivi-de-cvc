@@ -34,6 +34,11 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => {
       prevUserId.current = data.session?.user?.id ?? null;
       setSession(data.session);
+      // Un admin arrive directement sur son panneau d'administration.
+      if (isAdminSession(data.session)) {
+        setView("admin");
+        window.history.replaceState({ view: "admin", activeSiteId: null }, "");
+      }
     });
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       const newUserId = newSession?.user?.id ?? null;
@@ -47,9 +52,11 @@ export default function App() {
         prevUserId.current = newUserId;
         setSites(null);
         setActiveSiteId(null);
-        setView("list");
+        // Un admin arrive directement sur son panneau ; sinon liste des sites.
+        const startView = isAdminSession(newSession) ? "admin" : "list";
+        setView(startView);
         setSearch("");
-        window.history.replaceState({ view: "list", activeSiteId: null }, "");
+        window.history.replaceState({ view: startView, activeSiteId: null }, "");
       }
     });
     return () => subscription.subscription.unsubscribe();
@@ -227,7 +234,7 @@ export default function App() {
         <AdminView
           sites={sites}
           currentUserId={session.user.id}
-          onBack={goBack}
+          onBack={() => navigateTo("list")}
           showToast={showToast}
         />
       )}
