@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { ChevronLeft, Package, Phone, Mail, Copy, Check, Navigation } from "lucide-react";
+import FournisseurMap from "./FournisseurMap";
 
 const FOURNISSEURS = [
   {
     name: "Proservice",
     specialite: "Pompe, régulation, pièce chaudière…",
     lieu: "Aubervilliers",
+    adresse: "27 rue Heurtault, 93300 Aubervilliers",
+    color: "#f59e0b",
+    locations: [
+      { adresse: "27 rue Heurtault, 93300 Aubervilliers", coord: { lat: 48.9146, lng: 2.3826 } },
+      { adresse: "9 rue de l'Orme Saint-Germain, 91160 Champlan", coord: { lat: 48.6975, lng: 2.2870 } },
+    ],
     emails: ["alexis.breton@proservice-sema.fr", "contact@proservice-sema.fr", "matthieu.vadenne@proservice-sema.fr"],
     phones: ["01.53.56.91.00", "07.61.40.30.05"],
   },
@@ -14,6 +21,13 @@ const FOURNISSEURS = [
     specialite: "Pièce d'usure chaudière, sonde allumage, petite fourniture…",
     lieu: "Paris 12e",
     adresse: "27 rue Marsoulan, 75012 Paris",
+    color: "#ef4444",
+    locations: [
+      { adresse: "27 rue Marsoulan, 75012 Paris", coord: { lat: 48.8449, lng: 2.4009 } },
+      { adresse: "5 rue Mozart, ZI du Parc, 93130 Noisy-le-Sec", coord: { lat: 48.8925, lng: 2.4570 } },
+      { adresse: "18 avenue Arago, 91380 Chilly-Mazarin", coord: { lat: 48.7025, lng: 2.3110 } },
+      { adresse: "87 rue Gallieni, 92100 Boulogne-Billancourt", coord: { lat: 48.8360, lng: 2.2410 } },
+    ],
     emails: ["pdr@cosmac.fr", "r.blanpain@cosmac.fr", "pieces.detachees@cosmac.fr"],
     phones: ["01.49.72.85.00"],
   },
@@ -21,12 +35,22 @@ const FOURNISSEURS = [
     name: "Eau et Vapeur",
     specialite: "Vapeur, pompe, régulation, pièce chaudière…",
     lieu: "Saint-Denis",
+    adresse: "2 rue Charles Christofle, 93200 Saint-Denis",
+    color: "#10b981",
+    locations: [{ adresse: "2 rue Charles Christofle, 93200 Saint-Denis", coord: { lat: 48.9198, lng: 2.3597 } }],
     emails: ["commercial@eau-vapeur.fr"],
     phones: ["01.48.22.20.20", "06.08.24.74.55"],
   },
   {
     name: "Roclim",
     specialite: "Pompe, régulation, pièce chaudière…",
+    lieu: "Clamart",
+    adresse: "59 avenue Marguerite Renaudin, 92140 Clamart",
+    color: "#a855f7",
+    locations: [
+      { adresse: "59 avenue Marguerite Renaudin, 92140 Clamart", coord: { lat: 48.7970, lng: 2.2610 } },
+      { adresse: "15 avenue des Deux Lacs, 91140 Villejust", coord: { lat: 48.6820, lng: 2.2280 } },
+    ],
     emails: ["roclim@roclim.fr"],
     phones: ["01.46.44.97.97"],
   },
@@ -34,6 +58,28 @@ const FOURNISSEURS = [
     name: "Cedeo",
     specialite: "Plomberie, PVC, petite fourniture…",
     lieu: "Paris 19e",
+    adresse: "144 boulevard de la Villette, 75019 Paris",
+    color: "#2b7fff",
+    locations: [
+      // Paris
+      { adresse: "144 boulevard de la Villette, 75019 Paris", coord: { lat: 48.8817, lng: 2.3705 } },
+      { adresse: "217 rue d'Aubervilliers, 75018 Paris", coord: { lat: 48.8930, lng: 2.3705 } },
+      { adresse: "32 rue Damrémont, 75018 Paris", coord: { lat: 48.8888, lng: 2.3378 } },
+      { adresse: "138-140 avenue Ledru-Rollin, 75011 Paris", coord: { lat: 48.8515, lng: 2.3775 } },
+      { adresse: "19 boulevard Jules Ferry, 75011 Paris", coord: { lat: 48.8672, lng: 2.3688 } },
+      { adresse: "43 rue de Reuilly, 75012 Paris", coord: { lat: 48.8432, lng: 2.3888 } },
+      { adresse: "70 quai Panhard et Levassor, 75013 Paris", coord: { lat: 48.8280, lng: 2.3820 } },
+      { adresse: "22-30 rue Mathurin Régnier, 75015 Paris", coord: { lat: 48.8390, lng: 2.3080 } },
+      { adresse: "124 bis avenue de Villiers, 75017 Paris", coord: { lat: 48.8845, lng: 2.2960 } },
+      { adresse: "166 rue Cardinet, 75017 Paris", coord: { lat: 48.8875, lng: 2.3115 } },
+      // Petite couronne (92 / 93 / 94)
+      { adresse: "110 bis rue du Général Leclerc, 93500 Pantin", coord: { lat: 48.8975, lng: 2.4085 } },
+      { adresse: "93 rue de Paris, 93000 Bobigny", coord: { lat: 48.9045, lng: 2.4390 } },
+      { adresse: "40 route Principale du Port, 92230 Gennevilliers", coord: { lat: 48.9315, lng: 2.2960 } },
+      { adresse: "16 avenue des Guilleraies, 92000 Nanterre", coord: { lat: 48.9095, lng: 2.2110 } },
+      { adresse: "16 rue René Descartes, 94400 Vitry-sur-Seine", coord: { lat: 48.7865, lng: 2.4025 } },
+      { adresse: "2 rue du Commandant de Paris, ZI des Petites Haies, 94000 Créteil", coord: { lat: 48.7820, lng: 2.4650 } },
+    ],
     emails: ["paris18@cedeo.fr", "paris19@cedeo.fr", "paris11-ledru-rollin@cedeo.fr"],
     phones: ["01.44.65.11.22", "01.55.56.36.50", "01.44.93.77.34"],
   },
@@ -145,6 +191,8 @@ export default function FournisseurView({ onBack }) {
         </div>
         <h1 className="font-display text-2xl font-extrabold text-white">Fournisseurs</h1>
       </div>
+
+      <FournisseurMap fournisseurs={FOURNISSEURS} />
 
       <div className="grid gap-2.5">
         {FOURNISSEURS.map((f) => (
