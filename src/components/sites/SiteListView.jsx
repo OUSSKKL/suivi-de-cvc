@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Search, Table, Flame, Boxes, Clock, Headset, Package, LogOut } from "lucide-react";
+import { Building2, Plus, Search, Table, Flame, Boxes, Clock, Headset, Package, LogOut, Shield } from "lucide-react";
 import { sortSitesByStatus } from "../../utils/sortSites";
 import * as db from "../../lib/db";
 import SiteCard from "./SiteCard";
@@ -8,7 +8,7 @@ import MapPreview from "./MapPreview";
 import EmptyState from "../shared/EmptyState";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, onShowAdmin, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
@@ -40,14 +40,26 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
               </span>
             </h1>
           </div>
-          <button
-            onClick={onLogout}
-            className="shrink-0 text-[#7d868d] hover:text-[#e4e7ea] hover:bg-[#15191c] p-2 rounded-lg transition-colors"
-            aria-label="Se déconnecter"
-            title="Se déconnecter"
-          >
-            <LogOut size={16} />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {isAdmin && (
+              <button
+                onClick={onShowAdmin}
+                className="text-[#2b7fff] hover:bg-[#2b7fff]/10 p-2 rounded-lg transition-colors"
+                aria-label="Administration"
+                title="Administration"
+              >
+                <Shield size={16} />
+              </button>
+            )}
+            <button
+              onClick={onLogout}
+              className="text-[#7d868d] hover:text-[#e4e7ea] hover:bg-[#15191c] p-2 rounded-lg transition-colors"
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </header>
 

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import * as db from "./lib/db";
+import { isAdmin as isAdminSession, assignSite } from "./lib/admin";
 import { setSiteCoord } from "./utils/siteLocations";
+import AdminView from "./components/admin/AdminView";
 import SiteListView from "./components/sites/SiteListView";
 import TableauView from "./components/tableaux/TableauView";
 import KitsTableView from "./components/tableaux/KitsTableView";
@@ -101,6 +103,15 @@ export default function App() {
   async function addSite(name, coords) {
     const clean = name.trim().toUpperCase();
     const site = await db.createSite(clean, "");
+    // Un technicien ne voit que ses sites affectés : on lui affecte donc
+    // automatiquement le site qu'il vient de créer. (L'admin voit déjà tout.)
+    if (!isAdminSession(session)) {
+      try {
+        await assignSite(site.id, session.user.id);
+      } catch (e) {
+        /* si l'affectation échoue, le site reste créé côté admin */
+      }
+    }
     if (coords) setSiteCoord(clean, coords); // emplacement confirmé → carte
     setSites((prev) => [...prev, site]); // updater fonctionnel : ajout en série OK (scan)
     showToast("Site ajouté");
@@ -183,6 +194,7 @@ export default function App() {
   }
 
   const activeSite = sites.find((s) => s.id === activeSiteId) || null;
+  const admin = isAdminSession(session);
   const filteredSites = sites.filter((s) =>
     (s.name + " " + s.address).toLowerCase().includes(search.toLowerCase())
   );
@@ -205,7 +217,18 @@ export default function App() {
           onShowMap={() => navigateTo("map")}
           onShowSav={() => navigateTo("sav")}
           onShowFournisseur={() => navigateTo("fournisseur")}
+          isAdmin={admin}
+          onShowAdmin={() => navigateTo("admin")}
           onLogout={() => supabase.auth.signOut()}
+        />
+      )}
+
+      {view === "admin" && admin && (
+        <AdminView
+          sites={sites}
+          currentUserId={session.user.id}
+          onBack={goBack}
+          showToast={showToast}
         />
       )}
 
