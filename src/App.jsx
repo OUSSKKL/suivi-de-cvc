@@ -234,7 +234,7 @@ export default function App() {
         <AdminView
           sites={sites}
           currentUserId={session.user.id}
-          onBack={() => navigateTo("list")}
+          onLogout={() => supabase.auth.signOut()}
           showToast={showToast}
         />
       )}

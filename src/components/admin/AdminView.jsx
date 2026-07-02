@@ -1,25 +1,27 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, Shield, Users, MapPin, Plus, Trash2, KeyRound, Check, Search, X } from "lucide-react";
+import { Shield, Users, MapPin, Plus, Trash2, KeyRound, Check, Search, X, LogOut } from "lucide-react";
 import * as admin from "../../lib/admin";
 
-export default function AdminView({ sites, currentUserId, onBack, showToast }) {
+export default function AdminView({ sites, currentUserId, onLogout, showToast }) {
   const [tab, setTab] = useState("comptes"); // comptes | affectations
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 animate-fade-in">
-      <button
-        onClick={onBack}
-        className="group flex items-center gap-1 text-[#c2c8cd] hover:text-white text-sm font-medium mb-4 -ml-1 px-1 py-1 transition-colors"
-      >
-        <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
-        Retour
-      </button>
-
-      <div className="flex items-center gap-2.5 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-surface-gradient border border-[#272d32] flex items-center justify-center shrink-0">
-          <Shield size={17} className="text-[#2b7fff]" />
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-surface-gradient border border-[#272d32] flex items-center justify-center shrink-0">
+            <Shield size={17} className="text-[#2b7fff]" />
+          </div>
+          <h1 className="font-display text-2xl font-extrabold text-white truncate">Administration</h1>
         </div>
-        <h1 className="font-display text-2xl font-extrabold text-white">Administration</h1>
+        <button
+          onClick={onLogout}
+          className="shrink-0 flex items-center gap-1.5 text-[#c2c8cd] hover:text-white border border-[#272d32] hover:border-[#3a4147] text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+          title="Se déconnecter"
+        >
+          <LogOut size={15} />
+          <span className="hidden sm:inline">Déconnexion</span>
+        </button>
       </div>
 
       <div className="flex gap-2 mb-5">
