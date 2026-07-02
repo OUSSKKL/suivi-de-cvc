@@ -153,13 +153,15 @@ function ComptesTab({ currentUserId, showToast }) {
                   )}
                 </p>
               </div>
-              <button
-                onClick={() => setPwFor(u)}
-                className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border border-[#272d32] hover:border-[#3a4147] text-[#c2c8cd] hover:text-white transition-colors"
-                title="Changer le mot de passe"
-              >
-                <KeyRound size={15} />
-              </button>
+              {!u.isAdmin && (
+                <button
+                  onClick={() => setPwFor(u)}
+                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg border border-[#272d32] hover:border-[#3a4147] text-[#c2c8cd] hover:text-white transition-colors"
+                  title="Changer le mot de passe"
+                >
+                  <KeyRound size={15} />
+                </button>
+              )}
               {u.id !== currentUserId && !u.isAdmin && (
                 <button
                   onClick={() => setDelFor(u)}
