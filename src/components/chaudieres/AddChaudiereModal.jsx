@@ -10,10 +10,23 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
   const [modele, setModele] = useState(item?.modele || "");
   const [photo, setPhoto] = useState(item?.photo || "");
   const [photoFile, setPhotoFile] = useState(null);
+  const [busy, setBusy] = useState(false);
   const cameraRef = useRef(null);
   const galleryRef = useRef(null);
 
   const canSave = marque.trim() || modele.trim();
+
+  // Verrou anti double-clic : tant que l'enregistrement est en cours, les
+  // clics/Entrée suivants sont ignorés (sinon 2 chaudières identiques).
+  async function save() {
+    if (busy || !canSave) return;
+    setBusy(true);
+    try {
+      await onSave({ id: item?.id, marque, modele, photo, photoFile });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Modèles proposés selon la marque saisie (correspondance souple).
   const marqueKey = MARQUES.find(
@@ -73,7 +86,7 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
             placeholder={modelesProposes.length ? "Choisis ou tape un modèle…" : "Ex : Vitodens 200-W"}
             className="modal-input"
             list="modeles-list"
-            onKeyDown={(e) => e.key === "Enter" && canSave && onSave({ id: item?.id, marque, modele, photo, photoFile })}
+            onKeyDown={(e) => e.key === "Enter" && save()}
           />
           <datalist id="modeles-list">
             {modelesProposes.map((m) => (
@@ -139,9 +152,9 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
       </div>
       <ModalActions
         onCancel={onCancel}
-        onSave={() => onSave({ id: item?.id, marque, modele, photo, photoFile })}
-        disabled={!canSave}
-        saveLabel={item ? "Enregistrer" : "Ajouter"}
+        onSave={save}
+        disabled={!canSave || busy}
+        saveLabel={busy ? "Enregistrement…" : item ? "Enregistrer" : "Ajouter"}
       />
     </ModalShell>
   );
