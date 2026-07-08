@@ -8,6 +8,10 @@ import LoadingRow from "../shared/LoadingRow";
 import ChaudiereCard from "./ChaudiereCard";
 import AddChaudiereModal from "./AddChaudiereModal";
 
+// Nombre maximum de chaudières DIFFÉRENTES par site (chaque fiche peut avoir
+// une quantité, mais on ne peut pas créer plus de 2 fiches distinctes).
+const MAX_CHAUDIERES = 2;
+
 export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast }) {
   const [items, setItems] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -42,6 +46,12 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
   }
 
   async function saveItem({ marque, modele, photo, photoFile }) {
+    // Garde-fou : on ne dépasse jamais la limite (double sécurité).
+    if (items.length >= MAX_CHAUDIERES) {
+      showToast(`⚠️ Maximum ${MAX_CHAUDIERES} chaudières par site`);
+      setShowAdd(false);
+      return;
+    }
     try {
       let photoUrl = photo || null;
       if (photoFile) photoUrl = await db.uploadImage(photoFile, "chaudieres");
@@ -102,12 +112,20 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
         </p>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-[#1a1f23] hover:bg-[#272d32] border border-[#3a4147] text-[#ffffff] font-medium text-sm px-3.5 py-2 rounded-lg transition-colors"
+          disabled={items.length >= MAX_CHAUDIERES}
+          title={items.length >= MAX_CHAUDIERES ? `Maximum ${MAX_CHAUDIERES} chaudières par site` : undefined}
+          className="flex items-center gap-1.5 bg-[#1a1f23] hover:bg-[#272d32] border border-[#3a4147] text-[#ffffff] font-medium text-sm px-3.5 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1a1f23]"
         >
           <Plus size={15} strokeWidth={2.5} />
           Chaudière
         </button>
       </div>
+
+      {items.length >= MAX_CHAUDIERES && (
+        <p className="text-[11px] text-[#7d868d] -mt-2 mb-4">
+          Limite de {MAX_CHAUDIERES} chaudières différentes atteinte pour ce site.
+        </p>
+      )}
 
       {items.length === 0 && (
         <EmptyState
