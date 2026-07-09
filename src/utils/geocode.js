@@ -5,10 +5,11 @@
 // dans localStorage pour ne géocoder chaque adresse qu'une seule fois.
 
 const CACHE_KEY = "cvc:geocache:v2";
-const CITY = "Paris, France";
-// Tous les sites sont dans le 18e et le 19e : on contraint la recherche à
-// cette zone (coin haut-gauche puis bas-droite) pour fiabiliser le géocodage.
-const VIEWBOX = "2.325,48.905,2.410,48.868";
+const CITY = "Île-de-France, France";
+// On contraint la recherche à toute l'Île-de-France (Paris + petite et grande
+// couronne) pour fiabiliser le géocodage tout en couvrant 92/93/94/etc.
+// Format : minLon,maxLat,maxLon,minLat.
+const VIEWBOX = "1.45,49.24,3.55,48.12";
 
 function loadCache() {
   try {
@@ -89,12 +90,22 @@ async function geocodeOne(query, bounded) {
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Géocode une seule adresse (d'abord bornée au 18e/19e, sinon sans contrainte).
+// Une adresse contenant un code postal (5 chiffres) peut être hors Paris.
+function hasPostcode(s) {
+  return /\b\d{5}\b/.test(s || "");
+}
+
+// Géocode une seule adresse. Si un code postal est fourni, on cherche
+// largement en France ; sinon on privilégie l'Île-de-France.
 // Utilisé pour la confirmation d'emplacement à l'ajout d'un site.
 export async function geocodeAddress(name) {
-  const q = `${expandAddress(name)}, ${CITY}`;
-  let c = await geocodeOne(q, true);
-  if (!c) c = await geocodeOne(q, false);
+  const exp = expandAddress(name);
+  if (hasPostcode(name)) {
+    return await geocodeOne(`${exp}, France`, false);
+  }
+  let c = await geocodeOne(`${exp}, ${CITY}`, true);
+  if (!c) c = await geocodeOne(`${exp}, ${CITY}`, false);
+  if (!c) c = await geocodeOne(`${exp}, France`, false); // repli hors Paris
   return c;
 }
 
@@ -126,8 +137,15 @@ export async function suggestAddresses(query, limit = 5) {
   // Développe les abréviations (bv/bd→boulevard, imp→impasse…) avant la
   // recherche, sinon Nominatim ne trouve rien (ex "bv mortier").
   const q = expandAddress(raw);
+  // Adresse avec code postal (ex 92600) → possiblement hors Paris : on cherche
+  // large en France, sans contrainte de zone.
+  if (hasPostcode(raw)) {
+    return await searchMany(`${q}, France`, false, limit);
+  }
+  // Sinon : Île-de-France d'abord, puis élargissement à la France.
   let results = await searchMany(`${q}, ${CITY}`, true, limit);
   if (results.length === 0) results = await searchMany(`${q}, ${CITY}`, false, limit);
+  if (results.length === 0) results = await searchMany(`${q}, France`, false, limit);
   return results;
 }
 
