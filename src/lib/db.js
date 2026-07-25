@@ -11,6 +11,12 @@ function mapSite(row) {
     remark: row.remark || "",
     order: row.order,
     kits: row.kits ?? 0,
+    poches: row.poches ?? 0,
+    // null = pas encore configuré (donc pas d'adoucisseur sur ce site) : on
+    // ne défaulte volontairement pas sur "marche"/"ecs".
+    adoucisseurEtat: row.adoucisseur_etat ?? null,
+    adoucisseurUsage: row.adoucisseur_usage ?? null,
+    adoucisseurSel: row.adoucisseur_sel ?? 0,
     lat: row.lat ?? null,
     lng: row.lng ?? null,
     createdAt: row.created_at,
@@ -30,6 +36,20 @@ function mapChaudiere(row) {
     photo: row.photo_url || "",
     quantite: row.quantite ?? 1,
   };
+}
+
+function mapPotBoue(row) {
+  return {
+    id: row.id,
+    siteId: row.site_id,
+    modele: row.modele || "",
+    photo: row.photo_url || "",
+    quantite: row.quantite ?? 1,
+  };
+}
+
+function mapNettoyage(row) {
+  return { id: row.id, siteId: row.site_id, date: row.date };
 }
 
 function mapPhoto(row) {
@@ -103,8 +123,24 @@ export async function updateSiteKits(id, kits) {
   if (error) throw error;
 }
 
+export async function updateSitePoches(id, poches) {
+  const { error } = await supabase.from("sites").update({ poches }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function updateSiteRemark(id, remark) {
   const { error } = await supabase.from("sites").update({ remark }).eq("id", id);
+  if (error) throw error;
+}
+
+// patch : { etat?, usage?, sel? } — seules les clés fournies sont mises à jour.
+export async function updateSiteAdoucisseur(id, patch = {}) {
+  const row = {};
+  if (patch.etat !== undefined) row.adoucisseur_etat = patch.etat;
+  if (patch.usage !== undefined) row.adoucisseur_usage = patch.usage;
+  if (patch.sel !== undefined) row.adoucisseur_sel = patch.sel;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase.from("sites").update(row).eq("id", id);
   if (error) throw error;
 }
 
@@ -183,6 +219,67 @@ export async function deleteChaudiere(id) {
 
 export async function updateChaudiereQuantite(id, quantite) {
   const { error } = await supabase.from("chaudieres").update({ quantite }).eq("id", id);
+  if (error) throw error;
+}
+
+// ---------- Pots à boue ----------
+
+export async function listAllPotsBoue() {
+  const { data, error } = await supabase.from("pots_boue").select("*");
+  if (error) throw error;
+  return data.map(mapPotBoue);
+}
+
+export async function listPotsBoue(siteId) {
+  const { data, error } = await supabase
+    .from("pots_boue")
+    .select("*")
+    .eq("site_id", siteId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data.map(mapPotBoue);
+}
+
+export async function createPotBoue(siteId, { modele, photoUrl }) {
+  const { data, error } = await supabase
+    .from("pots_boue")
+    .insert({ id: uid(), site_id: siteId, modele, photo_url: photoUrl || null })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapPotBoue(data);
+}
+
+export async function deletePotBoue(id) {
+  const { error } = await supabase.from("pots_boue").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updatePotBoueQuantite(id, quantite) {
+  const { error } = await supabase.from("pots_boue").update({ quantite }).eq("id", id);
+  if (error) throw error;
+}
+
+// ---------- Nettoyages (pots à boue) ----------
+
+export async function listNettoyages(siteId) {
+  const { data, error } = await supabase.from("nettoyages_pot_boue").select("*").eq("site_id", siteId);
+  if (error) throw error;
+  return data.map(mapNettoyage);
+}
+
+export async function addNettoyage(siteId, date) {
+  const { data, error } = await supabase
+    .from("nettoyages_pot_boue")
+    .insert({ id: uid(), site_id: siteId, date })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapNettoyage(data);
+}
+
+export async function deleteNettoyage(id) {
+  const { error } = await supabase.from("nettoyages_pot_boue").delete().eq("id", id);
   if (error) throw error;
 }
 

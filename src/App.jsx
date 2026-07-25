@@ -6,8 +6,9 @@ import { setSiteCoord, getSiteCoord, removeSiteCoord } from "./utils/siteLocatio
 import AdminView from "./components/admin/AdminView";
 import SiteListView from "./components/sites/SiteListView";
 import TableauView from "./components/tableaux/TableauView";
-import KitsTableView from "./components/tableaux/KitsTableView";
 import ChaudieresTableView from "./components/tableaux/ChaudieresTableView";
+import PotsBoueTableView from "./components/tableaux/PotsBoueTableView";
+import AdoucisseurTableView from "./components/tableaux/AdoucisseurTableView";
 import SiteDetailView from "./components/sites/SiteDetailView";
 import AstreinteView from "./components/astreinte/AstreinteView";
 import MapView from "./components/map/MapView";
@@ -192,6 +193,25 @@ export default function App() {
     await db.updateSiteKits(id, kits);
   }
 
+  async function updatePoches(id, poches) {
+    setSites(sites.map((s) => (s.id === id ? { ...s, poches } : s)));
+    await db.updateSitePoches(id, poches);
+  }
+
+  async function updateAdoucisseur(id, patch) {
+    setSites(
+      sites.map((s) => {
+        if (s.id !== id) return s;
+        const next = { ...s };
+        if (patch.etat !== undefined) next.adoucisseurEtat = patch.etat;
+        if (patch.usage !== undefined) next.adoucisseurUsage = patch.usage;
+        if (patch.sel !== undefined) next.adoucisseurSel = patch.sel;
+        return next;
+      })
+    );
+    await db.updateSiteAdoucisseur(id, patch);
+  }
+
   if (!isSupabaseConfigured) {
     return <SetupNeeded />;
   }
@@ -254,8 +274,8 @@ export default function App() {
           onOpen={(id) => navigateTo("site", id)}
           onAdd={addSite}
           onDelete={(id) => setConfirmDeleteSite(id)}
-          onShowTableau={() => navigateTo("tableau")}
-          onShowKits={() => navigateTo("kits")}
+          onShowPotsBoue={() => navigateTo("potsboue")}
+          onShowAdoucisseur={() => navigateTo("adoucisseur")}
           onShowChaudieres={() => navigateTo("chaudieres")}
           onShowAstreinte={() => navigateTo("astreinte")}
           onShowMap={() => navigateTo("map")}
@@ -279,11 +299,13 @@ export default function App() {
 
       {view === "tableau" && <TableauView sites={sites} onBack={goBack} />}
 
-      {view === "kits" && <KitsTableView sites={sites} onBack={goBack} />}
-
       {view === "chaudieres" && (
         <ChaudieresTableView sites={sites} onBack={goBack} />
       )}
+
+      {view === "potsboue" && <PotsBoueTableView sites={sites} onBack={goBack} />}
+
+      {view === "adoucisseur" && <AdoucisseurTableView sites={sites} onBack={goBack} />}
 
       {view === "astreinte" && <AstreinteView onBack={goBack} showToast={showToast} />}
 
@@ -301,6 +323,8 @@ export default function App() {
           onBack={goBack}
           showToast={showToast}
           onKitsChange={(kits) => updateKits(activeSite.id, kits)}
+          onPochesChange={(poches) => updatePoches(activeSite.id, poches)}
+          onAdoucisseurChange={(patch) => updateAdoucisseur(activeSite.id, patch)}
           onRename={(name) => editSite(activeSite.id, name)}
           onSaveRemark={(remark) => saveRemark(activeSite.id, remark)}
           canEdit={admin}
@@ -310,7 +334,7 @@ export default function App() {
       {confirmDeleteSite && (
         <ConfirmModal
           title="Supprimer ce site ?"
-          message="Tous les relevés, fiches chaudières et photos liés seront supprimés définitivement."
+          message="Tous les relevés, fiches chaudières, pots à boue et photos liés seront supprimés définitivement."
           onCancel={() => setConfirmDeleteSite(null)}
           onConfirm={() => deleteSite(confirmDeleteSite)}
         />

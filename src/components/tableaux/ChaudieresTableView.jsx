@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, Flame, Building2, Download } from "lucide-react";
+import { ChevronLeft, Flame, Boxes, Building2, Download } from "lucide-react";
 import * as db from "../../lib/db";
 import { sortSites } from "../../utils/sortSites";
 import { downloadCSV } from "../../lib/download";
@@ -58,10 +58,10 @@ export default function ChaudieresTableView({ sites, onBack }) {
       const modeles = entries.length > 0
         ? entries.map(([label, n]) => (n > 1 ? `${n}× ${label}` : label)).join(", ")
         : "—";
-      return [site.name, totalQuantite(list), modeles];
+      return [site.name, totalQuantite(list), site.kits || 0, modeles];
     });
     const today = new Date().toISOString().slice(0, 10);
-    downloadCSV(`chaudieres_${today}.csv`, ["Site", "Nombre de chaudières", "Modèles"], rows);
+    downloadCSV(`chaudieres_${today}.csv`, ["Site", "Nombre de chaudières", "Kits d'allumage", "Modèles"], rows);
   }
 
   return (
@@ -91,7 +91,9 @@ export default function ChaudieresTableView({ sites, onBack }) {
         </button>
       </div>
 
-      <p className="text-[#7d868d] text-xs mb-5">Ajoute ou modifie les fiches depuis chaque site.</p>
+      <p className="text-[#7d868d] text-xs mb-5">
+        Ajoute ou modifie les fiches et les kits d'allumage depuis l'onglet Chaudières de chaque site.
+      </p>
 
       {sortedSites.length === 0 ? (
         <EmptyState
@@ -120,12 +122,22 @@ export default function ChaudieresTableView({ sites, onBack }) {
                     <Building2 size={14} className="text-[#2b7fff]" />
                   </div>
                   <span className="flex-1 text-white text-sm font-medium truncate">{site.name}</span>
-                  <span className="font-display font-bold text-sm text-[#2b7fff] bg-[#2b7fff]/10 tabular-nums min-w-[2.5ch] text-center px-2.5 py-1 rounded-full shrink-0">
-                    {totalQuantite(list)}
+                  <span
+                    className="flex items-center gap-1 font-display font-bold text-xs text-[#06b6d4] bg-[#06b6d4]/10 tabular-nums px-2.5 py-1 rounded-full shrink-0"
+                    title="Kits d'allumage en stock"
+                  >
+                    <Boxes size={11} />
+                    Kit {site.kits || 0}
                   </span>
                 </div>
                 {entries.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pl-11">
+                  <div className="flex flex-wrap items-center gap-1.5 pl-11">
+                    <span
+                      className={`font-display font-bold text-sm tabular-nums min-w-[2.5ch] text-center px-2.5 py-1 rounded-full border shrink-0 ${brandStyle(entries[0][0])}`}
+                      title="Chaudières"
+                    >
+                      {totalQuantite(list)}
+                    </span>
                     {entries.map(([label]) => (
                       <span
                         key={label}

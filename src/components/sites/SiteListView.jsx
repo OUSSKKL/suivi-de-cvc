@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Search, Table, Flame, Boxes, Clock, Headset, Package, LogOut, Shield } from "lucide-react";
+import { Building2, Plus, Search, Flame, Waves, Droplets, Clock, Headset, Package, LogOut, Shield } from "lucide-react";
 import { sortSitesByStatus } from "../../utils/sortSites";
 import * as db from "../../lib/db";
 import SiteCard from "./SiteCard";
@@ -8,7 +8,7 @@ import MapPreview from "./MapPreview";
 import EmptyState from "../shared/EmptyState";
 import Logo from "../shared/Logo";
 
-export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowTableau, onShowKits, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, canManageSites, onShowAdmin, onLogout }) {
+export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowPotsBoue, onShowAdoucisseur, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, canManageSites, onShowAdmin, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
 
@@ -69,8 +69,8 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
           { onClick: onShowChaudieres, icon: Flame, label: "Chaudières", color: "#f5a524" },
           { onClick: onShowAstreinte, icon: Clock, label: "Astreinte", color: "#2b7fff" },
           { onClick: onShowFournisseur, icon: Package, label: "Fournisseurs", color: "#a855f7" },
-          { onClick: onShowKits, icon: Boxes, label: "Kits", color: "#06b6d4" },
-          { onClick: onShowTableau, icon: Table, label: "Relevés", color: "#ec4899" },
+          { onClick: onShowPotsBoue, icon: Waves, label: "Pot à boue", color: "#06b6d4" },
+          { onClick: onShowAdoucisseur, icon: Droplets, label: "Adoucisseur", color: "#ec4899" },
         ].map(({ onClick, icon: Icon, label, color }) => (
           <button
             key={label}

@@ -1,15 +1,31 @@
 import { useState } from "react";
-import { Gauge, Flame, StickyNote, ChevronLeft, Pencil } from "lucide-react";
+import { Gauge, Flame, StickyNote, Droplets, Waves, ChevronLeft, Pencil } from "lucide-react";
 import CompteursTab from "../compteurs/CompteursTab";
 import ChaudieresTab from "../chaudieres/ChaudieresTab";
+import AdoucisseurTab from "../adoucisseur/AdoucisseurTab";
+import PotsBoueTab from "../potsboue/PotsBoueTab";
 import PhotosTab from "../photos/PhotosTab";
 import AddSiteModal from "./AddSiteModal";
 
-export default function SiteDetailView({ site, tab, setTab, onBack, showToast, onKitsChange, onRename, onSaveRemark, canEdit }) {
+export default function SiteDetailView({
+  site,
+  tab,
+  setTab,
+  onBack,
+  showToast,
+  onKitsChange,
+  onPochesChange,
+  onAdoucisseurChange,
+  onRename,
+  onSaveRemark,
+  canEdit,
+}) {
   const [editing, setEditing] = useState(false);
   const tabs = [
     { id: "compteurs", label: "Compteurs", icon: Gauge },
     { id: "chaudieres", label: "Chaudières", icon: Flame },
+    { id: "adoucisseur", label: "Adoucisseur", icon: Droplets },
+    { id: "potsboue", label: "Pot à boue", icon: Waves },
     { id: "photos", label: "Remarques", icon: StickyNote },
   ];
 
@@ -39,7 +55,7 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
         {site.address && <p className="text-[#aab3ba] text-sm mt-0.5 mb-3">{site.address}</p>}
         {!site.address && <div className="mb-3" />}
 
-        <div className="flex gap-1 -mx-1">
+        <div className="flex gap-1 -mx-1 overflow-x-auto no-scrollbar">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;
@@ -47,7 +63,7 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   active
                     ? "text-[#2b7fff] border-[#2b7fff]"
                     : "text-[#929ba2] border-transparent hover:text-[#e4e7ea] hover:border-[#3a4147]"
@@ -65,6 +81,17 @@ export default function SiteDetailView({ site, tab, setTab, onBack, showToast, o
         {tab === "compteurs" && <CompteursTab siteId={site.id} showToast={showToast} />}
         {tab === "chaudieres" && (
           <ChaudieresTab siteId={site.id} kits={site.kits} onKitsChange={onKitsChange} showToast={showToast} />
+        )}
+        {tab === "adoucisseur" && (
+          <AdoucisseurTab
+            etat={site.adoucisseurEtat}
+            usage={site.adoucisseurUsage}
+            sel={site.adoucisseurSel}
+            onChange={onAdoucisseurChange}
+          />
+        )}
+        {tab === "potsboue" && (
+          <PotsBoueTab siteId={site.id} poches={site.poches} onPochesChange={onPochesChange} showToast={showToast} />
         )}
         {tab === "photos" && (
           <PhotosTab siteId={site.id} remark={site.remark} onSaveRemark={onSaveRemark} showToast={showToast} />
