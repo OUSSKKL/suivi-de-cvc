@@ -41,3 +41,54 @@ export function sortSites(list) {
     return a.id.localeCompare(b.id);
   });
 }
+
+// Ordre d'affichage des clients. Les clients absents de cette liste viennent
+// ensuite (ordre alphabétique), puis les sites sans client.
+export const CLIENT_ORDER = ["RIVP", "CDC", "1001 VIES", "ELOGIE", "SSDH", "77"];
+
+export function compareClients(a, b) {
+  a = a || "";
+  b = b || "";
+  if (a === b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  const ia = CLIENT_ORDER.indexOf(a.toUpperCase());
+  const ib = CLIENT_ORDER.indexOf(b.toUpperCase());
+  const ra = ia === -1 ? CLIENT_ORDER.length : ia;
+  const rb = ib === -1 ? CLIENT_ORDER.length : ib;
+  return ra - rb || a.localeCompare(b);
+}
+
+// Regroupe les sites par client (ordre CLIENT_ORDER, sites sans client à la
+// fin), puis trie chaque groupe par urgence de relevé.
+// Retourne [{ client, sites }].
+export function groupSitesByClient(list, lastBySite) {
+  const groups = new Map();
+  for (const s of list) {
+    const c = s.client || "";
+    if (!groups.has(c)) groups.set(c, []);
+    groups.get(c).push(s);
+  }
+  return [...groups.keys()]
+    .sort(compareClients)
+    .map((client) => ({ client, sites: sortSitesByStatus(groups.get(client), lastBySite) }));
+}
+
+// Comme groupSitesByClient, mais les clients sont classés du plus impacté au
+// moins impacté par les relevés : d'abord le plus de sites en retard (rouge,
+// jamais relevé compris), puis le plus de sites à surveiller (orange), puis
+// l'ordre CLIENT_ORDER. Chaque groupe porte ses compteurs { red, orange, green }.
+export function groupSitesByClientUrgency(list, lastBySite) {
+  return groupSitesByClient(list, lastBySite)
+    .map((g) => {
+      const counts = { red: 0, orange: 0, green: 0 };
+      for (const s of g.sites) counts[releveStatus(lastBySite?.[s.id])]++;
+      return { ...g, counts };
+    })
+    .sort(
+      (a, b) =>
+        b.counts.red - a.counts.red ||
+        b.counts.orange - a.counts.orange ||
+        compareClients(a.client, b.client)
+    );
+}

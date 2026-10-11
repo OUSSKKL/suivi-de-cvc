@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Gauge, Flame, StickyNote, Droplets, Waves, ChevronLeft, Pencil } from "lucide-react";
+import { Gauge, Flame, StickyNote, Droplets, Waves, ChevronLeft, Pencil, Building2, X } from "lucide-react";
 import CompteursTab from "../compteurs/CompteursTab";
 import ChaudieresTab from "../chaudieres/ChaudieresTab";
 import AdoucisseurTab from "../adoucisseur/AdoucisseurTab";
 import PotsBoueTab from "../potsboue/PotsBoueTab";
 import PhotosTab from "../photos/PhotosTab";
 import AddSiteModal from "./AddSiteModal";
+import { CLIENT_ORDER, compareClients } from "../../utils/sortSites";
 
 export default function SiteDetailView({
   site,
@@ -18,9 +19,15 @@ export default function SiteDetailView({
   onAdoucisseurChange,
   onRename,
   onSaveRemark,
-  canEdit,
+  onSaveClient,
+  clients = [],
+  canEdit: canEditProp,
+  readOnly = false,
 }) {
+  // Lecture seule (admin) : aucun bouton de modification, même le nom/client.
+  const canEdit = canEditProp && !readOnly;
   const [editing, setEditing] = useState(false);
+  const [editingClient, setEditingClient] = useState(false);
   const tabs = [
     { id: "compteurs", label: "Compteurs", icon: Gauge },
     { id: "chaudieres", label: "Chaudières", icon: Flame },
@@ -52,8 +59,27 @@ export default function SiteDetailView({
             </button>
           )}
         </div>
-        {site.address && <p className="text-[#aab3ba] text-sm mt-0.5 mb-3">{site.address}</p>}
-        {!site.address && <div className="mb-3" />}
+        {site.address && <p className="text-[#aab3ba] text-sm mt-0.5">{site.address}</p>}
+        {/* Client du site : modifiable par l'admin seulement. */}
+        {onSaveClient && canEdit && (
+          <button
+            onClick={() => setEditingClient(true)}
+            className="mt-1.5 mb-3 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border border-[#272d32] text-[#c2c8cd] hover:border-[#2b7fff]/40 hover:text-white transition-colors"
+          >
+            <Building2 size={13} />
+            {site.client ? site.client : "Ajouter un client"}
+            <Pencil size={11} className="text-[#7d868d]" />
+          </button>
+        )}
+        {/* Technicien : client affiché en lecture seule. */}
+        {!canEdit && site.client && (
+          <span className="mt-1.5 mb-3 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border border-[#272d32] text-[#c2c8cd]">
+            <Building2 size={13} />
+            {site.client}
+          </span>
+        )}
+        {(!onSaveClient || !canEdit) && !site.client && <div className="mb-3" />}
+        {!onSaveClient && canEdit && site.client && <div className="mb-3" />}
 
         <div className="flex gap-1 -mx-1 overflow-x-auto no-scrollbar">
           {tabs.map((t) => {
@@ -78,9 +104,12 @@ export default function SiteDetailView({
       </div>
 
       <div className="px-4 pt-5">
-        {tab === "compteurs" && <CompteursTab siteId={site.id} showToast={showToast} />}
+        {readOnly && (
+          <p className="text-[11px] text-[#7d868d] mb-3">Consultation seule : aucune modification possible.</p>
+        )}
+        {tab === "compteurs" && <CompteursTab siteId={site.id} showToast={showToast} readOnly={readOnly} />}
         {tab === "chaudieres" && (
-          <ChaudieresTab siteId={site.id} kits={site.kits} onKitsChange={onKitsChange} showToast={showToast} />
+          <ChaudieresTab siteId={site.id} kits={site.kits} onKitsChange={onKitsChange} showToast={showToast} readOnly={readOnly} />
         )}
         {tab === "adoucisseur" && (
           <AdoucisseurTab
@@ -88,15 +117,28 @@ export default function SiteDetailView({
             usage={site.adoucisseurUsage}
             sel={site.adoucisseurSel}
             onChange={onAdoucisseurChange}
+            readOnly={readOnly}
           />
         )}
         {tab === "potsboue" && (
-          <PotsBoueTab siteId={site.id} poches={site.poches} onPochesChange={onPochesChange} showToast={showToast} />
+          <PotsBoueTab siteId={site.id} poches={site.poches} onPochesChange={onPochesChange} showToast={showToast} readOnly={readOnly} />
         )}
         {tab === "photos" && (
-          <PhotosTab siteId={site.id} remark={site.remark} onSaveRemark={onSaveRemark} showToast={showToast} />
+          <PhotosTab siteId={site.id} remark={site.remark} onSaveRemark={onSaveRemark} showToast={showToast} readOnly={readOnly} />
         )}
       </div>
+
+      {editingClient && canEdit && (
+        <ClientModal
+          current={site.client || ""}
+          clients={clients}
+          onCancel={() => setEditingClient(false)}
+          onSave={async (c) => {
+            setEditingClient(false);
+            if (c !== (site.client || "")) await onSaveClient(c);
+          }}
+        />
+      )}
 
       {editing && (
         <AddSiteModal
@@ -108,6 +150,74 @@ export default function SiteDetailView({
           }}
         />
       )}
+    </div>
+  );
+}
+
+// Choix du client : boutons rapides (clients connus) + saisie libre.
+function ClientModal({ current, clients, onCancel, onSave }) {
+  const [value, setValue] = useState(current);
+  const options = [...new Set([...CLIENT_ORDER, ...clients.map((c) => c.toUpperCase())])].sort(compareClients);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={onCancel}>
+      <div
+        className="w-full max-w-sm bg-[#0f1214] border border-[#272d32] rounded-2xl p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-white font-bold text-lg">Client du site</h2>
+          <button onClick={onCancel} className="text-[#7d868d] hover:text-white p-1" aria-label="Fermer">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {options.map((c) => (
+            <button
+              key={c}
+              onClick={() => setValue(c)}
+              className={`text-sm font-semibold py-2.5 rounded-lg border transition-colors ${
+                value === c
+                  ? "bg-[#2b7fff]/15 border-[#2b7fff]/50 text-[#2b7fff]"
+                  : "border-[#272d32] text-[#c2c8cd] hover:bg-[#15191c]"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value.toUpperCase())}
+          placeholder="Autre client…"
+          className="w-full bg-[#15191c] border border-[#272d32] rounded-lg px-3 py-2.5 text-base text-white placeholder-[#7d868d] focus:border-[#2b7fff] focus:outline-none mb-4"
+        />
+
+        <div className="flex gap-2">
+          {current && (
+            <button
+              onClick={() => onSave("")}
+              className="border border-[#272d32] text-[#ff8a8a] font-semibold text-sm px-3 py-2.5 rounded-lg hover:bg-[#15191c]"
+            >
+              Retirer
+            </button>
+          )}
+          <button
+            onClick={onCancel}
+            className="flex-1 border border-[#272d32] text-[#c2c8cd] font-semibold text-sm py-2.5 rounded-lg hover:bg-[#15191c]"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => onSave(value.trim())}
+            className="btn-accent flex-1 font-semibold text-sm py-2.5 rounded-lg"
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

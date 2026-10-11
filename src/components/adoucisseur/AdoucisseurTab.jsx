@@ -5,7 +5,7 @@ import { useState } from "react";
 // directement sur la fiche du site, comme les kits d'allumage.
 const SEL_LEVELS = ["0", "10 sacs", "1 palette", "2 palettes"];
 
-export default function AdoucisseurTab({ etat, usage, sel, onChange }) {
+export default function AdoucisseurTab({ etat, usage, sel, onChange, readOnly = false }) {
   const [selOpen, setSelOpen] = useState(false);
   const currentSel = sel ?? 0;
 
@@ -15,7 +15,7 @@ export default function AdoucisseurTab({ etat, usage, sel, onChange }) {
   }
 
   return (
-    <div className="space-y-4">
+    <fieldset disabled={readOnly} className="space-y-4 min-w-0 disabled:[&_button]:cursor-default">
       <div className="bg-[#15191c] border border-[#272d32] rounded-xl p-4">
         <p className="text-[#929ba2] text-xs uppercase tracking-wide font-semibold mb-2">État</p>
         <div className="flex gap-2">
@@ -84,7 +84,7 @@ export default function AdoucisseurTab({ etat, usage, sel, onChange }) {
           </span>
         </button>
 
-        {selOpen ? (
+        {readOnly ? null : selOpen ? (
           <div className="grid grid-cols-2 gap-2 mt-3">
             {SEL_LEVELS.map((label, i) => (
               <button
@@ -105,6 +105,6 @@ export default function AdoucisseurTab({ etat, usage, sel, onChange }) {
           <p className="text-[#7d868d] text-[11px] mt-2 text-center">Appuie pour choisir</p>
         )}
       </div>
-    </div>
+    </fieldset>
   );
 }

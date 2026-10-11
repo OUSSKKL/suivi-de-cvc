@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, Users, MapPin, Plus, Trash2, Check, Search, X, LogOut, ChevronRight, Pencil, AlertTriangle } from "lucide-react";
+import { Shield, Users, MapPin, Plus, Trash2, Check, Search, X, LogOut, ChevronRight, ChevronDown, Pencil, AlertTriangle, Info } from "lucide-react";
 import * as admin from "../../lib/admin";
 import * as db from "../../lib/db";
 import { setSiteCoord, removeSiteCoord } from "../../utils/siteLocations";
+import { groupSitesByClient, compareClients, CLIENT_ORDER } from "../../utils/sortSites";
 import AddSiteModal from "../sites/AddSiteModal";
 import AdminMapPreview from "./AdminMapPreview";
 import { releveStatus, STATUS_COLORS } from "../../utils/releveStatus";
@@ -13,8 +14,23 @@ const TECH_COLORS = [
   "#ec4899", "#06b6d4", "#84cc16", "#f97316", "#14b8a6",
 ];
 
-export default function AdminView({ sites, currentUserId, onLogout, showToast }) {
-  const [tab, setTab] = useState("comptes"); // comptes | affectations
+export default function AdminView({ sites, currentUserId, onLogout, showToast, onOpenSite }) {
+  // Onglet gardé pour la session : en revenant d'une fiche site, on retrouve "Sites".
+  const [tab, setTabState] = useState(() => {
+    try {
+      return sessionStorage.getItem("cvc:adminTab") || "comptes";
+    } catch {
+      return "comptes";
+    }
+  }); // comptes | affectations
+  function setTab(t) {
+    setTabState(t);
+    try {
+      sessionStorage.setItem("cvc:adminTab", t);
+    } catch {
+      /* stockage indisponible */
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 animate-fade-in">
@@ -58,7 +74,7 @@ export default function AdminView({ sites, currentUserId, onLogout, showToast })
       {tab === "comptes" ? (
         <ComptesTab showToast={showToast} />
       ) : (
-        <SitesTab showToast={showToast} />
+        <SitesTab showToast={showToast} onOpenSite={onOpenSite} />
       )}
     </div>
   );
@@ -336,18 +352,62 @@ function ManageUserModal({ user, onClose, onChanged }) {
 // Réservé à l'admin : ajouter des sites, les renommer (adresses réelles), et
 // les affecter aux techniciens. "Tous" affiche l'ensemble des sites ; un
 // technicien affiche seulement les siens.
-function SitesTab({ showToast }) {
+function SitesTab({ showToast, onOpenSite }) {
   const [sites, setSites] = useState(null);
   const [users, setUsers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [lastBySite, setLastBySite] = useState({}); // siteId -> date du dernier relevé
-  const [target, setTarget] = useState("all"); // "all" | userId
+  const [target, setTargetState] = useState(() => {
+    try {
+      return sessionStorage.getItem("cvc:adminTarget") || "all";
+    } catch {
+      return "all";
+    }
+  }); // "all" | userId
+  function setTarget(t) {
+    setTargetState(t);
+    try {
+      sessionStorage.setItem("cvc:adminTarget", t);
+    } catch {
+      /* stockage indisponible */
+    }
+  }
   const [allColorMode, setAllColorMode] = useState("tech"); // "tech" | "releve" (vue Tous)
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const [manage, setManage] = useState(null); // site en cours de gestion
   const [pendingAdd, setPendingAdd] = useState(null); // doublon en attente de confirmation
+  const [selected, setSelected] = useState(() => new Set()); // sites cochés (vue technicien)
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [assignTo, setAssignTo] = useState(""); // technicien choisi pour l'attribution groupée
+  // Clients dépliés dans la liste (gardé pour la session).
+  const [openClients, setOpenClients] = useState(() => {
+    try {
+      return new Set(JSON.parse(sessionStorage.getItem("cvc:adminOpenClients") || "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+  function toggleClient(key) {
+    setOpenClients((prev) => {
+      // Un seul client ouvert à la fois : ouvrir un client ferme les autres.
+      const n = prev.has(key) ? new Set() : new Set([key]);
+      try {
+        sessionStorage.setItem("cvc:adminOpenClients", JSON.stringify([...n]));
+      } catch {
+        /* stockage indisponible : tant pis */
+      }
+      return n;
+    });
+  }
+
+  // On vide la sélection quand on change de technicien.
+  useEffect(() => {
+    setSelected(new Set());
+    setConfirmRemove(false);
+  }, [target]);
 
   async function load() {
     setError("");
@@ -412,11 +472,54 @@ function SitesTab({ showToast }) {
   }, [assignments, target]);
 
   const visibleSites = useMemo(() => {
-    let list = [...(sites || [])].sort((a, b) => a.name.localeCompare(b.name));
-    if (target !== "all") list = list.filter((s) => assignedForTarget.has(s.id));
+    // Tri par client (RIVP, CDC, 1001 VIES, ELOGIE…, sans client à la fin), puis par nom.
+    const byClient = (a, b) => compareClients(a.client, b.client) || a.name.localeCompare(b.name);
+    let list = [...(sites || [])].sort(byClient);
+    if (target !== "all") {
+      // Vue d'un technicien : par client, puis par urgence de relevé
+      // (même ordre que ce que voit le technicien).
+      list = groupSitesByClient(
+        list.filter((s) => assignedForTarget.has(s.id)),
+        lastBySite
+      ).flatMap((g) => g.sites);
+    } else {
+      // Vue Tous : sites non attribués d'abord, puis regroupés tech par tech
+      // (ordre des techniciens), puis par client et par nom.
+      const rank = {};
+      users.forEach((u, i) => (rank[u.id] = i + 1));
+      const groupOf = (s) => {
+        const uid = techsBySite[s.id]?.[0];
+        return uid ? rank[uid] ?? users.length + 1 : 0;
+      };
+      list.sort((a, b) => groupOf(a) - groupOf(b) || byClient(a, b));
+    }
     const q = search.toLowerCase();
     return list.filter((s) => s.name.toLowerCase().includes(q));
-  }, [sites, target, assignedForTarget, search]);
+  }, [sites, target, assignedForTarget, search, users, techsBySite, lastBySite]);
+
+  const clientGroups = useMemo(() => {
+    const m = new Map();
+    for (const s of visibleSites) {
+      const c = s.client || "";
+      if (!m.has(c)) m.set(c, []);
+      m.get(c).push(s);
+    }
+    return [...m.entries()]
+      .map(([client, list]) => {
+        const counts = { red: 0, orange: 0, green: 0 };
+        for (const s of list) counts[releveStatus(lastBySite[s.id])]++;
+        return { client, sites: list, counts };
+      })
+      .sort(
+        (a, b) =>
+          b.counts.red - a.counts.red || b.counts.orange - a.counts.orange || compareClients(a.client, b.client)
+      );
+  }, [visibleSites, lastBySite]);
+
+  const clientList = useMemo(
+    () => [...new Set((sites || []).map((s) => s.client).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [sites]
+  );
 
   // Points géolocalisés du filtre courant.
   //  - "Tous" : coloré par technicien (pour distinguer qui gère quoi).
@@ -463,9 +566,129 @@ function SitesTab({ showToast }) {
     await createNow(clean, coords);
   }
 
+  function toggleSelect(id) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }
+  const allVisibleSelected = visibleSites.length > 0 && visibleSites.every((s) => selected.has(s.id));
+  function toggleSelectAll() {
+    setSelected(allVisibleSelected ? new Set() : new Set(visibleSites.map((s) => s.id)));
+  }
+
+  async function removeSelected() {
+    setRemoving(true);
+    setError("");
+    try {
+      const n = selected.size;
+      await admin.unassignSites([...selected], target);
+      setSelected(new Set());
+      setConfirmRemove(false);
+      showToast(`${n} site${n > 1 ? "s" : ""} retiré${n > 1 ? "s" : ""}`);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setRemoving(false);
+  }
+
+  // Vue "Tous" : suppression définitive des sites cochés.
+  async function deleteSelected() {
+    setRemoving(true);
+    setError("");
+    try {
+      const ids = [...selected];
+      const names = (sites || []).filter((s) => selected.has(s.id)).map((s) => s.name);
+      await db.deleteSites(ids);
+      names.forEach((n) => removeSiteCoord(n));
+      setSelected(new Set());
+      setConfirmRemove(false);
+      showToast(`${ids.length} site${ids.length > 1 ? "s" : ""} supprimé${ids.length > 1 ? "s" : ""}`);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setRemoving(false);
+  }
+
+  // Vue "Tous" : attribue les sites cochés à un technicien.
+  async function assignSelected() {
+    if (!assignTo) return;
+    setRemoving(true);
+    setError("");
+    try {
+      const already = new Set(assignments.filter((a) => a.user_id === assignTo).map((a) => a.site_id));
+      const n = await admin.assignSites([...selected], assignTo, already);
+      const who = users.find((u) => u.id === assignTo)?.username || "";
+      setSelected(new Set());
+      showToast(n ? `${n} site${n > 1 ? "s" : ""} attribué${n > 1 ? "s" : ""} à ${who}` : `Déjà attribués à ${who}`);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setRemoving(false);
+  }
+
   if (sites === null) return <p className="text-[#7d868d] text-sm">Chargement…</p>;
 
   const targetName = target === "all" ? "Tous" : users.find((u) => u.id === target)?.username;
+
+  // Une ligne de site dans la liste (arr = la liste qui la contient).
+  const renderSiteRow = (s, i, arr) => (
+    <div
+      key={s.id}
+      style={{ borderLeft: `4px solid ${techsBySite[s.id]?.length ? colorByUser[techsBySite[s.id][0]] : "transparent"}` }}
+      className={`flex items-center transition-colors ${selected.has(s.id) ? "bg-[#2b7fff]/10" : "hover:bg-[#15191c]"} ${
+        i !== arr.length - 1 ? "border-b border-[#272d32]" : ""
+      }`}
+    >
+      <button
+        onClick={() => setManage(s)}
+        className="min-w-0 flex-1 flex items-center gap-3 pl-3 pr-2 py-3.5 text-left"
+      >
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ background: STATUS_COLORS[releveStatus(lastBySite[s.id])] }}
+          title="Statut du dernier relevé"
+        />
+        <MapPin
+          size={15}
+          className={`shrink-0 ${s.lat != null ? "text-[#2b7fff]" : "text-[#4a5157]"}`}
+        />
+        <span className="min-w-0 flex-1 text-white text-sm font-medium truncate">{s.name}</span>
+        {isDup(s.name) && (
+          <span className="flex items-center gap-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#f59e0b] bg-[#f59e0b]/10 px-1.5 py-0.5 rounded">
+            <AlertTriangle size={11} />
+            doublon
+          </span>
+        )}
+        {/* Si plusieurs techniciens : pastilles des autres couleurs. */}
+        {(techsBySite[s.id] || []).length > 1 && (
+          <span className="flex items-center gap-1 shrink-0">
+            {techsBySite[s.id].slice(1).map((uid) => (
+              <span
+                key={uid}
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ background: colorByUser[uid] || "#4a5157" }}
+                title={users.find((u) => u.id === uid)?.username}
+              />
+            ))}
+          </span>
+        )}
+      </button>
+      <CheckBox
+        checked={selected.has(s.id)}
+        onClick={() => toggleSelect(s.id)}
+        color={techsBySite[s.id]?.length ? colorByUser[techsBySite[s.id][0]] : undefined}
+        className="mx-1"
+      />
+      <button onClick={() => setManage(s)} className="pl-1 pr-4 py-3.5" aria-label="Gérer le site">
+        <ChevronRight size={16} className="text-[#7d868d] shrink-0" />
+      </button>
+    </div>
+  );
 
   return (
     <div>
@@ -521,50 +744,226 @@ function SitesTab({ showToast }) {
           className="w-full bg-[#15191c] border border-[#272d32] rounded-lg pl-9 pr-3 py-2.5 text-base placeholder-[#7d868d] text-white focus:border-[#2b7fff] focus:outline-none"
         />
       </div>
-      <p className="text-[11px] text-[#7d868d] mb-2">
-        {visibleSites.length} site(s){target !== "all" ? " affecté(s)" : ""} · touche un site pour le gérer
-      </p>
-
-      {/* Liste des sites */}
-      <div className="border border-[#272d32] rounded-xl overflow-hidden">
-        {visibleSites.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => setManage(s)}
-            style={{ borderLeft: `4px solid ${techsBySite[s.id]?.length ? colorByUser[techsBySite[s.id][0]] : "transparent"}` }}
-            className={`w-full flex items-center gap-3 pl-3 pr-4 py-3.5 text-left hover:bg-[#15191c] transition-colors ${
-              i !== visibleSites.length - 1 ? "border-b border-[#272d32]" : ""
-            }`}
-          >
-            <MapPin
-              size={15}
-              className={`shrink-0 ${s.lat != null ? "text-[#2b7fff]" : "text-[#4a5157]"}`}
-            />
-            <span className="min-w-0 flex-1 text-white text-sm font-medium truncate">{s.name}</span>
-            {isDup(s.name) && (
-              <span className="flex items-center gap-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#f59e0b] bg-[#f59e0b]/10 px-1.5 py-0.5 rounded">
-                <AlertTriangle size={11} />
-                doublon
-              </span>
-            )}
-            {/* Si plusieurs techniciens : pastilles des autres couleurs. */}
-            {(techsBySite[s.id] || []).length > 1 && (
-              <span className="flex items-center gap-1 shrink-0">
-                {techsBySite[s.id].slice(1).map((uid) => (
-                  <span
-                    key={uid}
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ background: colorByUser[uid] || "#4a5157" }}
-                    title={users.find((u) => u.id === uid)?.username}
-                  />
-                ))}
-              </span>
-            )}
-            <ChevronRight size={16} className="text-[#7d868d] shrink-0" />
-          </button>
-        ))}
-        {visibleSites.length === 0 && <p className="text-[#7d868d] text-sm px-4 py-3">Aucun site.</p>}
+      <div className="flex items-center gap-2 mb-2">
+        {visibleSites.length > 0 && (
+          <CheckBox checked={allVisibleSelected} onClick={toggleSelectAll} title="Tout sélectionner" />
+        )}
+        <p className="text-[11px] text-[#7d868d]">
+          {visibleSites.length} site(s){target !== "all" ? " affecté(s)" : ""} · touche un site pour le gérer
+        </p>
       </div>
+
+      {/* Barre d'action (vue Tous) : attribuer à un technicien ou supprimer définitivement */}
+      {target === "all" && selected.size > 0 && (
+        <div className="sticky top-0 z-10 mb-2 px-3 py-2.5 rounded-lg border border-[#2b7fff]/30 bg-[#11161d]">
+          {!confirmRemove ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-white mr-auto">
+                {selected.size} site{selected.size > 1 ? "s" : ""} sélectionné{selected.size > 1 ? "s" : ""}
+              </span>
+              <select
+                value={assignTo}
+                onChange={(e) => setAssignTo(e.target.value)}
+                className="bg-[#15191c] border border-[#272d32] rounded-lg px-2 py-1.5 text-sm text-white focus:border-[#2b7fff] focus:outline-none"
+              >
+                <option value="">Choisir un tech…</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.username}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={assignSelected}
+                disabled={!assignTo || removing}
+                className="btn-accent flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
+              >
+                <Users size={14} />
+                {removing ? "…" : "Attribuer"}
+              </button>
+              <button
+                onClick={() => setConfirmRemove(true)}
+                disabled={removing}
+                className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#e5484d] hover:bg-[#d13b40] px-3 py-1.5 rounded-lg"
+              >
+                <Trash2 size={14} />
+                Supprimer
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-sm text-[#c2c8cd] px-3 py-1.5 rounded-lg border border-[#272d32] hover:bg-[#15191c]"
+              >
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-start gap-2 mb-2">
+                <AlertTriangle size={16} className="text-[#ff8a8a] shrink-0 mt-0.5" />
+                <span className="text-sm text-[#c2c8cd]">
+                  Supprimer définitivement <span className="text-white font-semibold">{selected.size}</span> site
+                  {selected.size > 1 ? "s" : ""} et toutes leurs données (relevés, chaudières, photos…) ? Action
+                  irréversible.
+                </span>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setConfirmRemove(false)}
+                  disabled={removing}
+                  className="text-sm text-[#c2c8cd] px-3 py-1.5 rounded-lg border border-[#272d32] hover:bg-[#15191c]"
+                >
+                  Non
+                </button>
+                <button
+                  onClick={deleteSelected}
+                  disabled={removing}
+                  className="text-sm font-semibold text-white bg-[#e5484d] hover:bg-[#d13b40] px-3 py-1.5 rounded-lg disabled:opacity-60"
+                >
+                  {removing ? "…" : "Oui, supprimer"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Barre d'action : retirer les sites cochés du technicien */}
+      {target !== "all" && selected.size > 0 && (
+        <div className="sticky top-0 z-10 mb-2 px-3 py-2.5 rounded-lg border border-[#ff5c5c]/30 bg-[#1a1214]">
+          {!confirmRemove ? (
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm text-white">
+                {selected.size} site{selected.size > 1 ? "s" : ""} sélectionné{selected.size > 1 ? "s" : ""}
+              </span>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-sm text-[#c2c8cd] px-3 py-1.5 rounded-lg border border-[#272d32] hover:bg-[#15191c]"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => setConfirmRemove(true)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#e5484d] hover:bg-[#d13b40] px-3 py-1.5 rounded-lg"
+              >
+                <Trash2 size={14} />
+                Retirer de {targetName}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm text-[#c2c8cd]">
+                Retirer <span className="text-white font-semibold">{selected.size}</span> site
+                {selected.size > 1 ? "s" : ""} de <span className="text-white font-semibold">{targetName}</span> ?
+              </span>
+              <button
+                onClick={() => setConfirmRemove(false)}
+                disabled={removing}
+                className="text-sm text-[#c2c8cd] px-3 py-1.5 rounded-lg border border-[#272d32] hover:bg-[#15191c]"
+              >
+                Non
+              </button>
+              <button
+                onClick={removeSelected}
+                disabled={removing}
+                className="text-sm font-semibold text-white bg-[#e5484d] hover:bg-[#d13b40] px-3 py-1.5 rounded-lg disabled:opacity-60"
+              >
+                {removing ? "…" : "Oui, retirer"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Liste des sites : une carte par client (le plus en retard en premier).
+          Toucher un client affiche ses sites. */}
+      {visibleSites.length === 0 && (
+        <p className="text-[#7d868d] text-sm px-4 py-3 border border-[#272d32] rounded-xl">Aucun site.</p>
+      )}
+      {clientGroups.map((g) => {
+        const key = g.client || "_none";
+        const open = search.trim() !== "" || openClients.has(key);
+        const allSel = g.sites.every((x) => selected.has(x.id));
+        return (
+          <div key={key} className="mb-2.5">
+            <div
+              className={`flex items-center rounded-xl border transition-colors ${
+                open ? "border-[#2b7fff]/40 bg-[#2b7fff]/5" : "border-[#272d32] bg-[#15191c] hover:border-[#3a4147]"
+              }`}
+            >
+              <button
+                onClick={() => toggleClient(key)}
+                className="min-w-0 flex-1 flex items-center gap-3 pl-4 pr-2 py-3.5 text-left"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-white font-bold text-base truncate">{g.client || "Sans client"}</span>
+                  <span className="block text-[12px] text-[#7d868d]">
+                    {g.sites.length} site{g.sites.length > 1 ? "s" : ""}
+                    {target === "all" &&
+                      (() => {
+                        const n = g.sites.filter((x) => !techsBySite[x.id]?.length).length;
+                        return n ? ` · ${n} non attribué${n > 1 ? "s" : ""}` : " · tous attribués";
+                      })()}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1.5 shrink-0">
+                  {["red", "orange", "green"].map((st) =>
+                    g.counts[st] ? (
+                      <span
+                        key={st}
+                        className="min-w-[26px] text-center text-[12px] font-bold tabular-nums px-1.5 py-0.5 rounded-md"
+                        style={{ color: STATUS_COLORS[st], background: `${STATUS_COLORS[st]}1f` }}
+                      >
+                        {g.counts[st]}
+                      </span>
+                    ) : null
+                  )}
+                </span>
+              </button>
+              {/* Cocher tous les sites de ce client */}
+              <CheckBox
+                checked={allSel}
+                title="Sélectionner tous les sites de ce client"
+                onClick={() =>
+                  setSelected((prev) => {
+                    const n = new Set(prev);
+                    g.sites.forEach((x) => (allSel ? n.delete(x.id) : n.add(x.id)));
+                    return n;
+                  })
+                }
+              />
+              <button onClick={() => toggleClient(key)} className="pl-1 pr-4 py-3.5" aria-label="Ouvrir le client">
+                <ChevronDown size={18} className={`text-[#7d868d] transition-transform ${open ? "rotate-180" : ""}`} />
+              </button>
+            </div>
+
+            {open && (
+              <div className="mt-2">
+                {target === "all" ? (
+                  // Vue Tous : non attribués puis attribués, chacun avec son titre.
+                  [
+                    { label: "Non attribués", list: g.sites.filter((x) => !techsBySite[x.id]?.length) },
+                    { label: "Attribués", list: g.sites.filter((x) => techsBySite[x.id]?.length) },
+                  ]
+                    .filter((part) => part.list.length)
+                    .map((part) => (
+                      <div key={part.label} className="mb-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#aab3ba] px-1 mb-1.5">
+                          {g.client || "Sans client"} · {part.label}{" "}
+                          <span className="text-[#7d868d] font-normal tabular-nums">{part.list.length}</span>
+                        </p>
+                        <div className="border border-[#272d32] rounded-xl overflow-hidden">
+                          {part.list.map(renderSiteRow)}
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="border border-[#272d32] rounded-xl overflow-hidden">{g.sites.map(renderSiteRow)}</div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {adding && <AddSiteModal withLocation onCancel={() => setAdding(false)} onSave={handleAdd} />}
       {pendingAdd && (
@@ -599,9 +998,8 @@ function SitesTab({ showToast }) {
       {manage && (
         <SiteAdminModal
           site={manage}
-          users={users}
-          assignments={assignments}
-          colorByUser={colorByUser}
+          clients={clientList}
+          onOpenSite={onOpenSite}
           onClose={() => setManage(null)}
           onChanged={async (msg, close) => {
             showToast(msg);
@@ -611,6 +1009,32 @@ function SitesTab({ showToast }) {
         />
       )}
     </div>
+  );
+}
+
+// Case à cocher (grande zone de clic pour le tactile).
+// color : couleur du technicien affecté (sinon gris / bleu par défaut).
+function CheckBox({ checked, onClick, title, color, className = "" }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      title={title}
+      aria-pressed={checked}
+      className={`shrink-0 p-1.5 ${className}`}
+    >
+      <span
+        className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${
+          color ? "" : checked ? "bg-[#2b7fff] border-[#2b7fff]" : "border-[#4a5157] hover:border-[#7d868d]"
+        }`}
+        style={color ? { borderColor: color, background: checked ? color : `${color}22` } : undefined}
+      >
+        {checked && <Check size={13} strokeWidth={3} className="text-white" />}
+      </span>
+    </button>
   );
 }
 
@@ -631,29 +1055,32 @@ function Chip({ label, count, active, color, onClick }) {
 
 // Popup de gestion d'un site : renommer (adresses réelles + carte) et affecter
 // aux techniciens.
-function SiteAdminModal({ site, users, assignments, colorByUser = {}, onClose, onChanged }) {
-  const [renaming, setRenaming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [confirmDel, setConfirmDel] = useState(false);
+function SiteAdminModal({ site, clients = [], onOpenSite, onClose, onChanged }) {
+  const [client, setClient] = useState(""); // saisie libre "Autre client"
+  const [savedClient, setSavedClient] = useState(site.client || ""); // client actuel du site
+  const [choice, setChoice] = useState(site.client || ""); // valeur du menu déroulant
+  const OTHER = "__autre__";
+  const clientOptions = [...new Set([...CLIENT_ORDER, ...clients.map((c) => c.toUpperCase()), ...(savedClient ? [savedClient] : [])])].sort(compareClients);
+  const newClient = choice === OTHER ? client.trim() : choice;
 
-  const assignedSet = useMemo(
-    () => new Set(assignments.filter((a) => a.site_id === site.id).map((a) => a.user_id)),
-    [assignments, site.id]
-  );
-
-  async function toggle(userId) {
+  async function saveClient(value) {
     setBusy(true);
     setError("");
     try {
-      if (assignedSet.has(userId)) await admin.unassignSite(site.id, userId);
-      else await admin.assignSite(site.id, userId);
-      onChanged("Affectation mise à jour", false);
+      await db.updateSiteClient(site.id, value);
+      setSavedClient(value);
+      setChoice(value);
+      setClient("");
+      onChanged(value ? `Client : ${value}` : "Client retiré", false);
     } catch (e) {
       setError(e.message);
     }
     setBusy(false);
   }
+  const [renaming, setRenaming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmDel, setConfirmDel] = useState(false);
 
   async function handleRename(name, coords) {
     const clean = name.trim().toUpperCase();
@@ -701,35 +1128,56 @@ function SiteAdminModal({ site, users, assignments, colorByUser = {}, onClose, o
         Renommer l'adresse
       </button>
 
-      <p className="text-[#c2c8cd] text-xs font-semibold mb-2">Affecté aux techniciens</p>
-      {users.length === 0 ? (
-        <p className="text-[#7d868d] text-sm">Aucun technicien.</p>
-      ) : (
-        <div className="border border-[#272d32] rounded-xl overflow-hidden">
-          {users.map((u, i) => {
-            const on = assignedSet.has(u.id);
-            return (
-              <button
-                key={u.id}
-                onClick={() => toggle(u.id)}
-                disabled={busy}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors disabled:opacity-60 ${
-                  i !== users.length - 1 ? "border-b border-[#272d32]" : ""
-                } ${on ? "bg-[#2b7fff]/5" : "hover:bg-[#15191c]"}`}
-              >
-                <span
-                  className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                    on ? "bg-[#2b7fff] border-[#2b7fff]" : "border-[#3a4147]"
-                  }`}
-                >
-                  {on && <Check size={13} className="text-white" strokeWidth={3} />}
-                </span>
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colorByUser[u.id] || "#4a5157" }} />
-                <span className="text-white text-sm font-medium truncate">{u.username}</span>
-              </button>
-            );
-          })}
+      {/* Client (bailleur) : menu déroulant avec tous les clients connus. */}
+      <p className="text-[#c2c8cd] text-xs font-semibold mb-2">Client</p>
+      <div className="flex gap-2 mb-2">
+        <div className="relative min-w-0 flex-1">
+          <select
+            value={choice}
+            onChange={(e) => setChoice(e.target.value)}
+            className="w-full appearance-none bg-[#15191c] border border-[#272d32] rounded-lg pl-3 pr-9 py-2 text-base text-white focus:border-[#2b7fff] focus:outline-none"
+          >
+            <option value="">Aucun client</option>
+            {clientOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+            <option value={OTHER}>Autre client…</option>
+          </select>
+          <ChevronDown
+            size={16}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7d868d] pointer-events-none"
+          />
         </div>
+        <button
+          onClick={() => saveClient(newClient)}
+          disabled={busy || newClient === savedClient || (choice === OTHER && !newClient)}
+          className="btn-accent font-semibold text-sm px-4 rounded-lg disabled:opacity-50"
+        >
+          OK
+        </button>
+      </div>
+      {choice === OTHER && (
+        <input
+          value={client}
+          onChange={(e) => setClient(e.target.value.toUpperCase())}
+          placeholder="Nom du nouveau client"
+          autoFocus
+          className="w-full bg-[#15191c] border border-[#272d32] rounded-lg px-3 py-2 text-base text-white placeholder-[#7d868d] focus:border-[#2b7fff] focus:outline-none mb-2"
+        />
+      )}
+      <div className="mb-2" />
+
+      {/* Ouvre la fiche complète du site (compteurs, chaudières, photos…). */}
+      {onOpenSite && (
+        <button
+          onClick={() => onOpenSite(site.id)}
+          className="btn-accent w-full flex items-center justify-center gap-2 font-semibold text-sm py-3 rounded-lg"
+        >
+          <Info size={16} />
+          Infos du site
+        </button>
       )}
 
       {/* Supprimer le site */}

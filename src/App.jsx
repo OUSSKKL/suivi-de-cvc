@@ -170,6 +170,18 @@ export default function App() {
     showToast("Site modifié");
   }
 
+  async function saveClient(id, client) {
+    const prev = sites.find((s) => s.id === id)?.client || "";
+    setSites((list) => list.map((s) => (s.id === id ? { ...s, client } : s)));
+    try {
+      await db.updateSiteClient(id, client);
+      showToast("Client enregistré");
+    } catch (e) {
+      setSites((list) => list.map((s) => (s.id === id ? { ...s, client: prev } : s)));
+      showToast("Erreur : " + e.message);
+    }
+  }
+
   async function saveRemark(id, remark) {
     setSites((prev) => prev.map((s) => (s.id === id ? { ...s, remark } : s)));
     await db.updateSiteRemark(id, remark);
@@ -294,6 +306,11 @@ export default function App() {
           currentUserId={session.user.id}
           onLogout={() => supabase.auth.signOut()}
           showToast={showToast}
+          onOpenSite={async (id) => {
+            // Recharge les sites (l'admin a pu en ajouter / modifier) puis ouvre la fiche.
+            await loadSites();
+            navigateTo("site", id);
+          }}
         />
       )}
 
@@ -327,7 +344,10 @@ export default function App() {
           onAdoucisseurChange={(patch) => updateAdoucisseur(activeSite.id, patch)}
           onRename={(name) => editSite(activeSite.id, name)}
           onSaveRemark={(remark) => saveRemark(activeSite.id, remark)}
+          onSaveClient={(client) => saveClient(activeSite.id, client)}
+          clients={[...new Set(sites.map((s) => s.client).filter(Boolean))]}
           canEdit={admin}
+          readOnly={admin}
         />
       )}
 

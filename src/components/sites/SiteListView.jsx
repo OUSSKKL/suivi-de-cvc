@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Search, Flame, Waves, Droplets, Clock, Headset, Package, LogOut, Shield } from "lucide-react";
-import { sortSitesByStatus } from "../../utils/sortSites";
+import { Building2, Plus, Search, Flame, Waves, Droplets, Clock, Headset, Package, LogOut, Shield, ChevronDown } from "lucide-react";
+import { groupSitesByClientUrgency } from "../../utils/sortSites";
+import { STATUS_COLORS } from "../../utils/releveStatus";
 import * as db from "../../lib/db";
 import SiteCard from "./SiteCard";
 import AddSiteModal from "./AddSiteModal";
@@ -11,6 +12,27 @@ import Logo from "../shared/Logo";
 export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowPotsBoue, onShowAdoucisseur, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, canManageSites, onShowAdmin, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
   const [lastReadingBySite, setLastReadingBySite] = useState(null);
+  // Clients dépliés. Gardé pour la session : on retrouve la liste ouverte
+  // en revenant d'une fiche site.
+  const [openClients, setOpenClients] = useState(() => {
+    try {
+      return new Set(JSON.parse(sessionStorage.getItem("cvc:openClients") || "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+  function toggleClient(key) {
+    setOpenClients((prev) => {
+      // Un seul client ouvert à la fois : ouvrir un client ferme les autres.
+      const n = prev.has(key) ? new Set() : new Set([key]);
+      try {
+        sessionStorage.setItem("cvc:openClients", JSON.stringify([...n]));
+      } catch {
+        /* stockage indisponible : tant pis */
+      }
+      return n;
+    });
+  }
 
   useEffect(() => {
     (async () => {
@@ -144,19 +166,72 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
         </div>
       )}
 
-      <div className="grid gap-2.5 mt-1">
-        {sortSitesByStatus(sites, lastReadingBySite).map((s) => (
-          <SiteCard
-            key={s.id}
-            site={s}
-            lastReading={lastReadingBySite?.[s.id]}
-            showStatus={lastReadingBySite !== null}
-            onOpen={() => onOpen(s.id)}
-            onDelete={() => onDelete(s.id)}
-            canDelete={canManageSites}
-          />
-        ))}
-      </div>
+      {/* Une carte par client (le plus en retard en premier). Toucher un
+          client affiche ses sites, triés par urgence de relevé. */}
+      {(() => {
+        const groups = groupSitesByClientUrgency(sites, lastReadingBySite);
+        // Un seul groupe sans client : liste directe (affichage identique à avant).
+        const showHeaders = groups.length > 1 || (groups[0] && groups[0].client);
+        // Pendant une recherche, tous les clients sont dépliés.
+        const searching = (search || "").trim() !== "";
+        return groups.map((g) => {
+          const key = g.client || "_none";
+          const open = !showHeaders || searching || openClients.has(key);
+          return (
+          <div key={key} className="mt-1 mb-2.5">
+            {showHeaders && (
+              <button
+                onClick={() => toggleClient(key)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors ${
+                  open ? "border-[#2b7fff]/40 bg-[#2b7fff]/5" : "border-[#272d32] bg-[#15191c] hover:border-[#3a4147]"
+                }`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-white font-bold text-base truncate">{g.client || "Sans client"}</span>
+                  <span className="block text-[12px] text-[#7d868d]">
+                    {g.sites.length} site{g.sites.length > 1 ? "s" : ""}
+                  </span>
+                </span>
+                {lastReadingBySite !== null && (
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    {["red", "orange", "green"].map((st) =>
+                      g.counts[st] ? (
+                        <span
+                          key={st}
+                          className="min-w-[26px] text-center text-[12px] font-bold tabular-nums px-1.5 py-0.5 rounded-md"
+                          style={{ color: STATUS_COLORS[st], background: `${STATUS_COLORS[st]}1f` }}
+                        >
+                          {g.counts[st]}
+                        </span>
+                      ) : null
+                    )}
+                  </span>
+                )}
+                <ChevronDown
+                  size={18}
+                  className={`text-[#7d868d] shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                />
+              </button>
+            )}
+            {open && (
+            <div className={`grid gap-2.5 ${showHeaders ? "mt-2.5 mb-2" : ""}`}>
+              {g.sites.map((s) => (
+                <SiteCard
+                  key={s.id}
+                  site={s}
+                  lastReading={lastReadingBySite?.[s.id]}
+                  showStatus={lastReadingBySite !== null}
+                  onOpen={() => onOpen(s.id)}
+                  onDelete={() => onDelete(s.id)}
+                  canDelete={canManageSites}
+                />
+              ))}
+            </div>
+            )}
+          </div>
+          );
+        });
+      })()}
 
       {showAdd && (
         <AddSiteModal

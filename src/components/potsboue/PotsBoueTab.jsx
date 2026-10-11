@@ -15,7 +15,7 @@ import NettoyageDateModal from "./NettoyageDateModal";
 // même règle que les chaudières.
 const MAX_POTS_BOUE = 2;
 
-export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast }) {
+export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast, readOnly = false }) {
   const [items, setItems] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
@@ -137,13 +137,13 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
             <p className="text-[#929ba2] text-sm">Aucun nettoyage encore</p>
           )}
         </div>
-        <button
+        {!readOnly && <button
           onClick={() => setShowNettoyageModal(true)}
           className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-3 rounded-lg shrink-0"
         >
           <Sparkles size={16} strokeWidth={2.5} />
           Nettoyage
-        </button>
+        </button>}
       </div>
 
       {sortedNettoyages.length > 0 && (
@@ -157,13 +157,13 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
                 <Sparkles size={15} className="text-[#2b7fff]" />
                 <span className="font-medium text-[#ffffff] text-sm">{formatDate(n.date)}</span>
               </div>
-              <button
+              {!readOnly && <button
                 onClick={() => setConfirmDelNettoyage(n.id)}
                 className="text-[#7d868d] hover:text-[#ff5d5d] p-1.5 shrink-0"
                 aria-label="Supprimer"
               >
                 <Trash2 size={14} />
-              </button>
+              </button>}
             </div>
           ))}
         </div>
@@ -171,22 +171,22 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
 
       <div className="bg-[#15191c] border border-[#272d32] rounded-xl p-4 mb-4">
         <p className="text-[#929ba2] text-xs uppercase tracking-wide font-semibold mb-2">Poches en stock</p>
-        <div className="flex items-center justify-between gap-3">
-          <button
+        <div className={`flex items-center gap-3 ${readOnly ? "justify-center" : "justify-between"}`}>
+          {!readOnly && <button
             onClick={() => changePoches(-1)}
             className="w-11 h-11 rounded-lg bg-[#1a1f23] border border-[#3a4147] text-white text-2xl font-semibold flex items-center justify-center active:bg-[#272d32]"
             aria-label="Retirer une poche"
           >
             −
-          </button>
+          </button>}
           <span className="font-display text-4xl font-extrabold text-white tabular-nums">{poches || 0}</span>
-          <button
+          {!readOnly && <button
             onClick={() => changePoches(1)}
             className="w-11 h-11 rounded-lg bg-[#2b7fff] text-[#ffffff] text-2xl font-semibold flex items-center justify-center active:bg-[#5a9eff]"
             aria-label="Ajouter une poche"
           >
             +
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -194,7 +194,7 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
         <p className="text-[#aab3ba] text-sm">
           {totalQuantite} pot{totalQuantite !== 1 ? "s" : ""} à boue
         </p>
-        <button
+        {!readOnly && <button
           onClick={() => setShowAdd(true)}
           disabled={items.length >= MAX_POTS_BOUE}
           title={items.length >= MAX_POTS_BOUE ? `Maximum ${MAX_POTS_BOUE} pots à boue par site` : undefined}
@@ -202,10 +202,10 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
         >
           <Plus size={15} strokeWidth={2.5} />
           Pot à boue
-        </button>
+        </button>}
       </div>
 
-      {items.length >= MAX_POTS_BOUE && (
+      {!readOnly && items.length >= MAX_POTS_BOUE && (
         <p className="text-[11px] text-[#7d868d] -mt-2 mb-4">
           Limite de {MAX_POTS_BOUE} pots à boue différents atteinte pour ce site.
         </p>
@@ -216,8 +216,8 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
           icon={Waves}
           title="Aucun pot à boue enregistré"
           message="Ajoute le modèle et la plaque signalétique de chaque pot à boue du site."
-          action={() => setShowAdd(true)}
-          actionLabel="Ajouter un pot à boue"
+          action={readOnly ? undefined : () => setShowAdd(true)}
+          actionLabel={readOnly ? undefined : "Ajouter un pot à boue"}
         />
       )}
 
@@ -229,6 +229,7 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
             onOpenPhoto={() => p.photo && setViewingPhoto(p)}
             onDelete={() => setConfirmDel(p.id)}
             onChangeQuantite={(q) => changeQuantite(p.id, q)}
+            readOnly={readOnly}
           />
         ))}
       </div>
@@ -284,13 +285,13 @@ export default function PotsBoueTab({ siteId, poches, onPochesChange, showToast 
                 >
                   <Download size={18} />
                 </button>
-                <button
+                {!readOnly && <button
                   onClick={() => setConfirmDel(viewingPhoto.id)}
                   className="p-2 text-[#ff8a8a] hover:bg-white/10 rounded-lg"
                   aria-label="Supprimer"
                 >
                   <Trash2 size={18} />
-                </button>
+                </button>}
                 <button
                   onClick={() => setViewingPhoto(null)}
                   className="p-2 text-white hover:bg-white/10 rounded-lg"

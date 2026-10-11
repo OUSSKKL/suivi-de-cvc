@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Flame, Trash2 } from "lucide-react";
 
 // Carte chaudière : appui = agrandir la photo, balayage gauche = supprimer.
-export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onChangeQuantite }) {
+export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onChangeQuantite, readOnly = false }) {
   const DELETE_WIDTH = 88;
   const [translateX, setTranslateX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -18,6 +18,7 @@ export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onC
   // Pointer Events unifie souris, doigt et stylet : une seule logique de
   // glissement marche partout (pas besoin de dupliquer touch/mouse).
   function onPointerDown(e) {
+    if (readOnly) return;
     pressed.current = true;
     startX.current = e.clientX;
     startY.current = e.clientY;
@@ -90,7 +91,7 @@ export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onC
         style={{
           transform: `translateX(${translateX}px)`,
           transition: dragging ? "none" : "transform 0.2s ease-out",
-          cursor: dragging ? "grabbing" : "grab",
+          cursor: readOnly ? "default" : dragging ? "grabbing" : "grab",
         }}
         className="touch-pan-y select-none relative bg-[#15191c] border border-[#272d32] rounded-l-lg"
       >
@@ -109,6 +110,11 @@ export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onC
             </div>
           </button>
 
+          {readOnly ? (
+            <span className="font-display font-bold text-base text-[#2b7fff] tabular-nums shrink-0">
+              ×{c.quantite || 1}
+            </span>
+          ) : (
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
@@ -130,6 +136,7 @@ export default function ChaudiereCard({ chaudiere: c, onOpenPhoto, onDelete, onC
               +
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>

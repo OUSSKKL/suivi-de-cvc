@@ -63,3 +63,21 @@ export async function unassignSite(siteId, userId) {
     .eq("user_id", userId);
   if (error) throw error;
 }
+// Retire plusieurs sites d'un technicien en une seule requête.
+export async function unassignSites(siteIds, userId) {
+  if (!siteIds.length) return;
+  const { error } = await supabase
+    .from("site_assignments")
+    .delete()
+    .eq("user_id", userId)
+    .in("site_id", siteIds);
+  if (error) throw error;
+}
+// Affecte plusieurs sites à un technicien (ignore ceux déjà affectés).
+export async function assignSites(siteIds, userId, alreadyAssigned = new Set()) {
+  const rows = siteIds.filter((id) => !alreadyAssigned.has(id)).map((id) => ({ site_id: id, user_id: userId }));
+  if (!rows.length) return 0;
+  const { error } = await supabase.from("site_assignments").insert(rows);
+  if (error) throw error;
+  return rows.length;
+}

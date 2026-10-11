@@ -9,6 +9,7 @@ function mapSite(row) {
     name: row.name,
     address: row.address || "",
     remark: row.remark || "",
+    client: row.client || "",
     order: row.order,
     kits: row.kits ?? 0,
     poches: row.poches ?? 0,
@@ -110,6 +111,19 @@ export async function updateSiteCoord(id, coords) {
 
 export async function deleteSite(id) {
   const { error } = await supabase.from("sites").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Supprime définitivement plusieurs sites (et leurs données liées).
+export async function deleteSites(ids) {
+  if (!ids.length) return;
+  const { error } = await supabase.from("sites").delete().in("id", ids);
+  if (error) throw error;
+}
+
+// Client (bailleur) du site : "RIVP", "CDC"… ("" = aucun).
+export async function updateSiteClient(id, client) {
+  const { error } = await supabase.from("sites").update({ client }).eq("id", id);
   if (error) throw error;
 }
 

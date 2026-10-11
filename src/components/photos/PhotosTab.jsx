@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 // Onglet "Remarques" : une simple note libre par site, enregistrée en base.
-export default function PhotosTab({ remark = "", onSaveRemark }) {
+export default function PhotosTab({ remark = "", onSaveRemark, readOnly = false }) {
   const [remarkText, setRemarkText] = useState(remark);
   const [saving, setSaving] = useState(false);
 
@@ -17,6 +17,17 @@ export default function PhotosTab({ remark = "", onSaveRemark }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (readOnly) {
+    return (
+      <div>
+        <p className="block text-[#aab3ba] text-sm mb-2">Remarques</p>
+        <div className="modal-input w-full min-h-[120px] whitespace-pre-wrap leading-relaxed">
+          {remark || <span className="text-[#7d868d]">Aucune remarque.</span>}
+        </div>
+      </div>
+    );
   }
 
   return (

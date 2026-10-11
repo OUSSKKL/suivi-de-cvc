@@ -12,7 +12,7 @@ import AddChaudiereModal from "./AddChaudiereModal";
 // une quantité, mais on ne peut pas créer plus de 2 fiches distinctes).
 const MAX_CHAUDIERES = 2;
 
-export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast }) {
+export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast, readOnly = false }) {
   const [items, setItems] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
@@ -87,22 +87,22 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
     <div>
       <div className="bg-[#15191c] border border-[#272d32] rounded-xl p-4 mb-4">
         <p className="text-[#929ba2] text-xs uppercase tracking-wide font-semibold mb-2">Kits d'allumage en stock</p>
-        <div className="flex items-center justify-between gap-3">
-          <button
+        <div className={`flex items-center gap-3 ${readOnly ? "justify-center" : "justify-between"}`}>
+          {!readOnly && <button
             onClick={() => changeKits(-1)}
             className="w-11 h-11 rounded-lg bg-[#1a1f23] border border-[#3a4147] text-white text-2xl font-semibold flex items-center justify-center active:bg-[#272d32]"
             aria-label="Retirer un kit"
           >
             −
-          </button>
+          </button>}
           <span className="font-display text-4xl font-extrabold text-white tabular-nums">{kits || 0}</span>
-          <button
+          {!readOnly && <button
             onClick={() => changeKits(1)}
             className="w-11 h-11 rounded-lg bg-[#2b7fff] text-[#ffffff] text-2xl font-semibold flex items-center justify-center active:bg-[#5a9eff]"
             aria-label="Ajouter un kit"
           >
             +
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -110,7 +110,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
         <p className="text-[#aab3ba] text-sm">
           {totalQuantite} chaudière{totalQuantite !== 1 ? "s" : ""}
         </p>
-        <button
+        {!readOnly && <button
           onClick={() => setShowAdd(true)}
           disabled={items.length >= MAX_CHAUDIERES}
           title={items.length >= MAX_CHAUDIERES ? `Maximum ${MAX_CHAUDIERES} chaudières par site` : undefined}
@@ -118,10 +118,10 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
         >
           <Plus size={15} strokeWidth={2.5} />
           Chaudière
-        </button>
+        </button>}
       </div>
 
-      {items.length >= MAX_CHAUDIERES && (
+      {!readOnly && items.length >= MAX_CHAUDIERES && (
         <p className="text-[11px] text-[#7d868d] -mt-2 mb-4">
           Limite de {MAX_CHAUDIERES} chaudières différentes atteinte pour ce site.
         </p>
@@ -132,8 +132,8 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
           icon={Flame}
           title="Aucune chaudière enregistrée"
           message="Ajoute la marque et le modèle de chaque chaudière du site."
-          action={() => setShowAdd(true)}
-          actionLabel="Ajouter une chaudière"
+          action={readOnly ? undefined : () => setShowAdd(true)}
+          actionLabel={readOnly ? undefined : "Ajouter une chaudière"}
         />
       )}
 
@@ -145,6 +145,7 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
             onOpenPhoto={() => c.photo && setViewingPhoto(c)}
             onDelete={() => setConfirmDel(c.id)}
             onChangeQuantite={(q) => changeQuantite(c.id, q)}
+            readOnly={readOnly}
           />
         ))}
       </div>
@@ -188,13 +189,13 @@ export default function ChaudieresTab({ siteId, kits, onKitsChange, showToast })
                 >
                   <Download size={18} />
                 </button>
-                <button
+                {!readOnly && <button
                   onClick={() => setConfirmDel(viewingPhoto.id)}
                   className="p-2 text-[#ff8a8a] hover:bg-white/10 rounded-lg"
                   aria-label="Supprimer"
                 >
                   <Trash2 size={18} />
-                </button>
+                </button>}
                 <button
                   onClick={() => setViewingPhoto(null)}
                   className="p-2 text-white hover:bg-white/10 rounded-lg"

@@ -8,7 +8,7 @@ import LoadingRow from "../shared/LoadingRow";
 import DateConfirmModal from "./DateConfirmModal";
 
 // ---------- Compteurs Tab (suivi des dates de relevé) ----------
-export default function CompteursTab({ siteId, showToast }) {
+export default function CompteursTab({ siteId, showToast, readOnly = false }) {
   const [items, setItems] = useState(null);
   const [showDateModal, setShowDateModal] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
@@ -63,6 +63,7 @@ export default function CompteursTab({ siteId, showToast }) {
             <p className="text-[#929ba2] text-sm">Aucun relevé encore</p>
           )}
         </div>
+        {!readOnly && (
         <button
           onClick={() => setShowDateModal(true)}
           className="btn-accent flex items-center gap-1.5 font-semibold text-sm px-4 py-3 rounded-lg shrink-0"
@@ -70,6 +71,7 @@ export default function CompteursTab({ siteId, showToast }) {
           <Gauge size={16} strokeWidth={2.5} />
           Relevé
         </button>
+        )}
       </div>
 
       <p className="text-[#aab3ba] text-sm mb-2.5">
@@ -81,8 +83,8 @@ export default function CompteursTab({ siteId, showToast }) {
           icon={Gauge}
           title="Aucun relevé enregistré"
           message="Appuie sur le bouton Relevé à chaque passage sur site pour garder une trace des dates."
-          action={() => setShowDateModal(true)}
-          actionLabel="Faire un relevé"
+          action={readOnly ? undefined : () => setShowDateModal(true)}
+          actionLabel={readOnly ? undefined : "Faire un relevé"}
         />
       ) : (
         <div className="space-y-1.5">
@@ -95,6 +97,7 @@ export default function CompteursTab({ siteId, showToast }) {
                 <Gauge size={15} className="text-[#2b7fff]" />
                 <span className="font-medium text-[#ffffff] text-sm">{formatDate(r.date)}</span>
               </div>
+              {!readOnly && (
               <button
                 onClick={() => setConfirmDel(r.id)}
                 className="text-[#7d868d] hover:text-[#ff5d5d] p-1.5 shrink-0"
@@ -102,6 +105,7 @@ export default function CompteursTab({ siteId, showToast }) {
               >
                 <Trash2 size={14} />
               </button>
+              )}
             </div>
           ))}
         </div>

@@ -3,7 +3,7 @@ import { Waves, Trash2 } from "lucide-react";
 
 // Carte pot à boue : appui = agrandir la photo, balayage gauche = supprimer.
 // Comportement identique à ChaudiereCard (juste marque en moins).
-export default function PotBoueCard({ potBoue: p, onOpenPhoto, onDelete, onChangeQuantite }) {
+export default function PotBoueCard({ potBoue: p, onOpenPhoto, onDelete, onChangeQuantite, readOnly = false }) {
   const DELETE_WIDTH = 88;
   const [translateX, setTranslateX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -17,6 +17,7 @@ export default function PotBoueCard({ potBoue: p, onOpenPhoto, onDelete, onChang
   const clamp = (x) => Math.max(-DELETE_WIDTH, Math.min(0, x));
 
   function onPointerDown(e) {
+    if (readOnly) return;
     pressed.current = true;
     startX.current = e.clientX;
     startY.current = e.clientY;
@@ -89,7 +90,7 @@ export default function PotBoueCard({ potBoue: p, onOpenPhoto, onDelete, onChang
         style={{
           transform: `translateX(${translateX}px)`,
           transition: dragging ? "none" : "transform 0.2s ease-out",
-          cursor: dragging ? "grabbing" : "grab",
+          cursor: readOnly ? "default" : dragging ? "grabbing" : "grab",
         }}
         className="touch-pan-y select-none relative bg-[#15191c] border border-[#272d32] rounded-l-lg"
       >
@@ -108,6 +109,11 @@ export default function PotBoueCard({ potBoue: p, onOpenPhoto, onDelete, onChang
             </div>
           </button>
 
+          {readOnly ? (
+            <span className="font-display font-bold text-base text-[#2b7fff] tabular-nums shrink-0">
+              ×{p.quantite || 1}
+            </span>
+          ) : (
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
@@ -129,6 +135,7 @@ export default function PotBoueCard({ potBoue: p, onOpenPhoto, onDelete, onChang
               +
             </button>
           </div>
+          )}
         </div>
       </div>
     </div>
