@@ -4,3 +4,12 @@ dist
 *.local
 .env
 .claude/
+
+# Supabase CLI (fichiers locaux)
+supabase/.temp/
+
+# Scripts SQL ponctuels contenant des données (adresses des sites) :
+# gardés en local, jamais publiés (dépôt public).
+supabase/import_sites_*.sql
+supabase/client_*.sql
+supabase/releve_*.sql
