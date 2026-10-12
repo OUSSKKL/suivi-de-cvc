@@ -4,6 +4,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import * as db from "../../lib/db";
 import { releveStatus, STATUS_COLORS, daysSince } from "../../utils/releveStatus";
+import { compareClients } from "../../utils/sortSites";
+import ClientLogo from "../shared/ClientLogo";
 import { getAllSiteCoords, setSiteCoord, removeSiteCoord } from "../../utils/siteLocations";
 import { addDarkTiles } from "./darkTiles";
 import MapAddWizard from "./MapAddWizard";
@@ -36,6 +38,11 @@ export default function MapView({ sites, onBack, canManage = false }) {
   const [placed, setPlaced] = useState(0);
   const [counts, setCounts] = useState({ green: 0, orange: 0, red: 0 });
   const [filter, setFilter] = useState("all"); // "all" | "late" (orange+rouge) | "critical" (rouge)
+  const [clientFilter, setClientFilter] = useState(""); // "" = tous les clients, "_none" = sans client
+  // Clients présents dans les sites (ordre RIVP, CDC, 1001 VIES, ELOGIE…).
+  const clientsList = [...new Set(sites.map((s) => s.client || "_none"))].sort((a, b) =>
+    compareClients(a === "_none" ? "" : a, b === "_none" ? "" : b)
+  );
   const [wizard, setWizard] = useState(false);
 
   // Contenu du popup (élément DOM pour pouvoir attacher les clics) :
@@ -86,7 +93,7 @@ export default function MapView({ sites, onBack, canManage = false }) {
     return el;
   }
 
-  function renderMarkers(filterMode = filter) {
+  function renderMarkers(filterMode = filter, clientMode = clientFilter) {
     if (!markers.current || !mapInst.current) return;
     markers.current.clearLayers();
     const coords = getAllSiteCoords();
@@ -96,6 +103,8 @@ export default function MapView({ sites, onBack, canManage = false }) {
     for (const site of sites) {
       const c = coords[(site.name || "").trim().toUpperCase()];
       if (!c) continue;
+      // Filtre client
+      if (clientMode && (site.client || "_none") !== clientMode) continue;
       const status = releveStatus(lastBySite.current[site.id]);
       tally[status]++;
       if (filterMode === "late" && status !== "orange") continue;
@@ -137,7 +146,13 @@ export default function MapView({ sites, onBack, canManage = false }) {
 
   function applyFilter(mode) {
     setFilter(mode);
-    renderMarkers(mode);
+    renderMarkers(mode, clientFilter);
+  }
+
+  function applyClient(c) {
+    const next = clientFilter === c ? "" : c; // re-cliquer = tous les clients
+    setClientFilter(next);
+    renderMarkers(filter, next);
   }
 
   useEffect(() => {
@@ -242,6 +257,34 @@ export default function MapView({ sites, onBack, canManage = false }) {
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_COLORS.red }} />{counts.red}</span>
         </div>
       </div>
+
+      {/* Filtre par client */}
+      {clientsList.length > 1 && (
+        <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar pb-0.5">
+          <button
+            onClick={() => applyClient("")}
+            className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+              clientFilter === "" ? "bg-white/5 text-white border-[#c2c8cd]" : "border-[#3a4147] text-[#c2c8cd] hover:bg-[#1a1f23]"
+            }`}
+          >
+            Tous les clients
+          </button>
+          {clientsList.map((c) => (
+            <button
+              key={c}
+              onClick={() => applyClient(c)}
+              className={`shrink-0 flex items-center gap-1.5 text-xs font-medium pl-1 pr-3 py-1 rounded-lg border transition-colors ${
+                clientFilter === c
+                  ? "bg-[#2b7fff]/10 text-[#2b7fff] border-[#2b7fff]/50"
+                  : "border-[#3a4147] text-[#c2c8cd] hover:bg-[#1a1f23]"
+              }`}
+            >
+              <ClientLogo client={c === "_none" ? "" : c} size={22} />
+              {c === "_none" ? "Sans client" : c}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div
         ref={mapRef}

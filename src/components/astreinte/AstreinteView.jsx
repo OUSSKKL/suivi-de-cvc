@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Clock, Plus, MapPin, Trash2 } from "lucide-react";
 import * as db from "../../lib/db";
-import { formatDate } from "../../lib/format";
+import { formatDateJMA } from "../../lib/format";
 import { MOIS } from "../../data/constants";
 import { durationHours, formatDuration, heuresMajorees } from "../../utils/duration";
 import LoadingRow from "../shared/LoadingRow";
@@ -181,7 +181,7 @@ export default function AstreinteView({ onBack, showToast }) {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-white text-sm font-semibold">{formatDate(it.date)}</span>
+                  <span className="text-white text-sm font-semibold tabular-nums">{formatDateJMA(it.date)}</span>
                   <span className="text-[#7d868d] text-xs tabular-nums">
                     {it.startTime} → {it.endTime}
                   </span>

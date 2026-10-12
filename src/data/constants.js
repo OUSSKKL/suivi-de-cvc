@@ -1,5 +1,5 @@
 // Marques connues + modèles courants en France. La saisie reste libre.
-export const MARQUES = ["Viessmann", "De Dietrich", "Atlantic"];
+export const MARQUES = ["Viessmann", "De Dietrich", "Atlantic", "Hoval", "Vapeur"];
 
 export const MODELES_PAR_MARQUE = {
   Viessmann: [
@@ -40,6 +40,18 @@ export const MODELES_PAR_MARQUE = {
     "Varblok",
     "Varmax 2",
   ],
+  Hoval: [
+    "UltraGas 2",
+    "UltraGas",
+    "UltraGas C",
+    "TopGas",
+    "TopGas classic",
+    "TopGas comfort",
+    "UltraOil",
+    "Max-3",
+  ],
+  // Vapeur : pas de modèles pré-remplis, saisie libre.
+  Vapeur: [],
 };
 
 export const MOIS = [

@@ -55,13 +55,13 @@ export default function AddChaudiereModal({ item, onCancel, onSave }) {
     <ModalShell onCancel={onCancel} title={item ? "Modifier la chaudière" : "Nouvelle chaudière"} icon={<Flame size={17} />}>
       <div className="space-y-3">
         <Field label="Marque">
-          <div className="flex gap-1.5 mb-2">
+          <div className="grid grid-cols-3 gap-1.5 mb-2">
             {MARQUES.map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => pickMarque(m)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${
                   marqueKey === m
                     ? "bg-[#2b7fff] text-[#ffffff] border-[#2b7fff]"
                     : "bg-[#1a1f23] text-[#e4e7ea] border-[#3a4147] hover:bg-[#272d32]"
