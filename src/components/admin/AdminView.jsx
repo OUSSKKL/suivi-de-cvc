@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Shield, Users, MapPin, Plus, Trash2, Check, Search, X, LogOut, ChevronRight, ChevronDown, Pencil, AlertTriangle, Info } from "lucide-react";
 import * as admin from "../../lib/admin";
 import * as db from "../../lib/db";
@@ -6,6 +6,7 @@ import { setSiteCoord, removeSiteCoord } from "../../utils/siteLocations";
 import { groupSitesByClient, compareClients, CLIENT_ORDER } from "../../utils/sortSites";
 import AddSiteModal from "../sites/AddSiteModal";
 import AdminMapPreview from "./AdminMapPreview";
+import ClientLogo from "../shared/ClientLogo";
 import { releveStatus, STATUS_COLORS } from "../../utils/releveStatus";
 
 // Palette de couleurs par technicien (attribuée dans l'ordre de la liste).
@@ -33,7 +34,7 @@ export default function AdminView({ sites, currentUserId, onLogout, showToast, o
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 animate-fade-in">
+    <div className="max-w-3xl lg:max-w-[1400px] mx-auto px-4 lg:px-8 pb-28 pt-6 animate-fade-in">
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-surface-gradient border border-[#272d32] flex items-center justify-center shrink-0">
@@ -144,7 +145,7 @@ function ComptesTab({ showToast }) {
           <p className="text-[#929ba2] text-sm">Crée un premier compte avec le bouton ci-dessus.</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-2.5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {users.map((u) => {
             const color = colorByUser[u.id];
             return (
@@ -382,6 +383,20 @@ function SitesTab({ showToast, onOpenSite }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [assignTo, setAssignTo] = useState(""); // technicien choisi pour l'attribution groupée
+  // PC : position de départ de la carte. Elle reste collée à cette hauteur
+  // pendant qu'on fait défiler la liste (elle ne bouge pas à l'écran).
+  const gridRef = useRef(null);
+  const [mapTop, setMapTop] = useState(16);
+  const sitesLoaded = sites !== null;
+  useEffect(() => {
+    function measure() {
+      if (!gridRef.current) return;
+      setMapTop(Math.max(16, Math.round(gridRef.current.getBoundingClientRect().top + window.scrollY)));
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [sitesLoaded]);
   // Clients dépliés dans la liste (gardé pour la session).
   const [openClients, setOpenClients] = useState(() => {
     try {
@@ -657,7 +672,24 @@ function SitesTab({ showToast, onOpenSite }) {
           size={15}
           className={`shrink-0 ${s.lat != null ? "text-[#2b7fff]" : "text-[#4a5157]"}`}
         />
-        <span className="min-w-0 flex-1 text-white text-sm font-medium truncate">{s.name}</span>
+        {/* Vue Tous : attribué (couleur du tech) ou non attribué */}
+      {target !== "all" ? null : techsBySite[s.id]?.length ? (
+        <span
+          className="shrink-0 w-[92px] text-center text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded truncate"
+          style={{
+            color: colorByUser[techsBySite[s.id][0]] || "#c2c8cd",
+            background: `${colorByUser[techsBySite[s.id][0]] || "#7d868d"}1f`,
+          }}
+          title={techsBySite[s.id].map((uid) => users.find((u) => u.id === uid)?.username).join(", ")}
+        >
+          Attribué
+        </span>
+      ) : (
+        <span className="shrink-0 w-[92px] text-center text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded text-[#aab3ba] bg-[#272d32]">
+          Non attribué
+        </span>
+      )}
+      <span className="min-w-0 flex-1 text-white text-sm font-medium truncate">{s.name}</span>
         {isDup(s.name) && (
           <span className="flex items-center gap-1 shrink-0 text-[10px] font-bold uppercase tracking-wide text-[#f59e0b] bg-[#f59e0b]/10 px-1.5 py-0.5 rounded">
             <AlertTriangle size={11} />
@@ -709,13 +741,20 @@ function SitesTab({ showToast, onOpenSite }) {
         ))}
       </div>
 
+      {/* Sur PC : liste à gauche, carte à droite (collée en haut au défilement).
+          Sur téléphone : carte au-dessus de la liste, comme avant. */}
+      <div ref={gridRef} className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      <div className="lg:col-start-2 lg:row-start-1 lg:sticky" style={{ top: mapTop }}>
       {/* Aperçu carte : bascule couleur seulement sur "Tous" ; un technicien
           est toujours affiché par statut de relevé. */}
       <AdminMapPreview
         points={mapPoints}
         colorMode={allColorMode}
         onColorMode={target === "all" ? setAllColorMode : null}
+        tall
       />
+      </div>
+      <div className="lg:col-start-1 lg:row-start-1 min-w-0">
 
       {/* Ajouter un site */}
       <button
@@ -894,6 +933,7 @@ function SitesTab({ showToast, onOpenSite }) {
                 onClick={() => toggleClient(key)}
                 className="min-w-0 flex-1 flex items-center gap-3 pl-4 pr-2 py-3.5 text-left"
               >
+                <ClientLogo client={g.client} size={40} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-white font-bold text-base truncate">{g.client || "Sans client"}</span>
                   <span className="block text-[12px] text-[#7d868d]">
@@ -964,6 +1004,9 @@ function SitesTab({ showToast, onOpenSite }) {
           </div>
         );
       })}
+
+      </div>
+      </div>
 
       {adding && <AddSiteModal withLocation onCancel={() => setAdding(false)} onSave={handleAdd} />}
       {pendingAdd && (

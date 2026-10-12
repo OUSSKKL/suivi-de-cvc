@@ -50,11 +50,37 @@ function ColorToggle({ colorMode, onColorMode, onClick }) {
 // Petit aperçu NON interactif (ne capture ni le zoom ni le scroll de la page).
 // Un clic ouvre la carte en plein écran, où l'on peut zoomer et toucher un
 // site pour voir son nom et son dernier relevé.
-export default function AdminMapPreview({ points, colorMode, onColorMode }) {
+// tall : sur PC (écran large), la carte prend toute la hauteur de l'écran.
+export default function AdminMapPreview({ points, colorMode, onColorMode, tall = false }) {
   const [open, setOpen] = useState(false);
   const mapRef = useRef(null);
+  const boxRef = useRef(null);
   const mapInst = useRef(null);
   const layer = useRef(null);
+  const boundsRef = useRef([]);
+
+  // Sur PC (écran large) avec tall : carte haute et interactive (zoom,
+  // déplacement, survol d'un site pour voir son nom).
+  const [desktop, setDesktop] = useState(
+    () => tall && typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+  );
+  useEffect(() => {
+    if (!tall) return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [tall]);
+
+  // Recadre la carte sur les sites (après avoir recalculé sa taille).
+  function refit() {
+    const map = mapInst.current;
+    if (!map) return;
+    map.invalidateSize();
+    const b = boundsRef.current;
+    if (b.length) map.fitBounds(b, { padding: [30, 30], maxZoom: 14 });
+    else map.setView([48.8905, 2.37], 12);
+  }
 
   useEffect(() => {
     if (!mapRef.current || mapInst.current) return;
@@ -71,40 +97,70 @@ export default function AdminMapPreview({ points, colorMode, onColorMode }) {
     mapInst.current = map;
     addDarkTiles(map);
     layer.current = L.layerGroup().addTo(map);
+    // La taille de la carte change (passage téléphone ↔ PC, fenêtre
+    // redimensionnée) : on recalcule et on recadre sur les sites.
+    let t;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(refit, 80);
+    });
+    if (boxRef.current) ro.observe(boxRef.current);
     return () => {
+      clearTimeout(t);
+      ro.disconnect();
       map.remove();
       mapInst.current = null;
     };
   }, []);
+
+  // Interactions activées seulement sur PC.
+  useEffect(() => {
+    const map = mapInst.current;
+    if (!map) return;
+    const handlers = [map.dragging, map.scrollWheelZoom, map.doubleClickZoom, map.boxZoom, map.keyboard];
+    handlers.forEach((h) => (desktop ? h.enable() : h.disable()));
+    if (desktop && !map._cvcZoom) {
+      map._cvcZoom = L.control.zoom({ position: "topright" }).addTo(map);
+    } else if (!desktop && map._cvcZoom) {
+      map._cvcZoom.remove();
+      map._cvcZoom = null;
+    }
+  }, [desktop]);
 
   useEffect(() => {
     if (!mapInst.current || !layer.current) return;
     layer.current.clearLayers();
     const bounds = [];
     for (const p of points) {
-      L.marker([p.lat, p.lng], { icon: dot(p.color), interactive: false }).addTo(layer.current);
+      const m = L.marker([p.lat, p.lng], { icon: dot(p.color), interactive: desktop }).addTo(layer.current);
+      if (desktop) {
+        const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+        m.bindTooltip(`<b>${esc(p.name)}</b><br>${esc(lastReleveText(p.last))}`, { direction: "top", offset: [0, -6] });
+      }
       bounds.push([p.lat, p.lng]);
     }
-    if (bounds.length) mapInst.current.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
-    else mapInst.current.setView([48.8905, 2.37], 12);
-    setTimeout(() => mapInst.current && mapInst.current.invalidateSize(), 60);
-  }, [points]);
+    boundsRef.current = bounds;
+    refit();
+    setTimeout(refit, 80);
+  }, [points, desktop]);
 
   return (
     <>
       <div
-        onClick={() => points.length && setOpen(true)}
-        role="button"
-        className="relative w-full rounded-xl border border-[#272d32] overflow-hidden mb-4 z-0 cursor-pointer"
-        style={{ height: 180 }}
+        ref={boxRef}
+        onClick={() => !desktop && points.length && setOpen(true)}
+        role={desktop ? undefined : "button"}
+        className={`relative w-full rounded-xl border border-[#272d32] overflow-hidden mb-4 z-0 h-[180px] ${
+          desktop ? "" : "cursor-pointer"
+        } ${tall ? "lg:h-[60vh] lg:mb-0" : ""}`}
         aria-label="Agrandir la carte"
       >
         {/* La carte ne capture pas les gestes : le clic ouvre le plein écran. */}
-        <div ref={mapRef} className="absolute inset-0 pointer-events-none" />
+        <div ref={mapRef} className={`absolute inset-0 ${desktop ? "" : "pointer-events-none"}`} />
 
         {/* Bascule couleur (si dispo) */}
         {onColorMode && points.length > 0 && (
-          <div className="absolute top-2.5 left-2.5 z-10">
+          <div className="absolute top-2.5 left-2.5 z-[500]">
             <ColorToggle colorMode={colorMode} onColorMode={onColorMode} />
           </div>
         )}
@@ -114,9 +170,18 @@ export default function AdminMapPreview({ points, colorMode, onColorMode }) {
             <p className="text-[#7d868d] text-xs font-medium">Aucun site placé sur la carte</p>
           </div>
         ) : (
-          <span className="absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1.5 bg-[#0c0e10]/80 backdrop-blur border border-[#272d32] text-[#2b7fff] text-xs font-semibold px-2.5 py-1.5 rounded-lg pointer-events-none">
+          <span
+            onClick={(e) => {
+              if (!desktop) return;
+              e.stopPropagation();
+              setOpen(true);
+            }}
+            className={`absolute bottom-2.5 right-2.5 z-[500] flex items-center gap-1.5 bg-[#0c0e10]/80 backdrop-blur border border-[#272d32] text-[#2b7fff] text-xs font-semibold px-2.5 py-1.5 rounded-lg ${
+              desktop ? "cursor-pointer hover:bg-[#15191c]" : "pointer-events-none"
+            }`}
+          >
             <Maximize2 size={13} />
-            Agrandir
+            Plein écran
           </span>
         )}
       </div>

@@ -37,7 +37,7 @@ export default function SiteDetailView({
   ];
 
   return (
-    <div className="max-w-3xl mx-auto pb-24 animate-fade-in">
+    <div className={`max-w-3xl mx-auto pb-24 animate-fade-in ${readOnly ? "lg:max-w-5xl" : ""}`}>
       <div className="sticky top-0 z-20 bg-[#0c0e10]/95 backdrop-blur border-b border-[#1a1f23] px-4 pt-4 pb-0">
         <button
           onClick={onBack}

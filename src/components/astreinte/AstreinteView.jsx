@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Clock, Plus, MapPin, Trash2 } from "lucide-r
 import * as db from "../../lib/db";
 import { formatDate } from "../../lib/format";
 import { MOIS } from "../../data/constants";
-import { durationHours, formatDuration } from "../../utils/duration";
+import { durationHours, formatDuration, heuresMajorees } from "../../utils/duration";
 import LoadingRow from "../shared/LoadingRow";
 import EmptyState from "../shared/EmptyState";
 import ConfirmModal from "../shared/ConfirmModal";
@@ -68,6 +68,14 @@ export default function AstreinteView({ onBack, showToast }) {
     .filter((it) => (it.date || "").slice(0, 7) === monthKey)
     .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime));
   const monthTotalH = monthItems.reduce((s, it) => s + durationHours(it.startTime, it.endTime), 0);
+  // Heures majorées du mois (125 % en semaine/samedi, 200 % dimanche et jours fériés).
+  const monthMaj = monthItems.reduce(
+    (acc, it) => {
+      const m = heuresMajorees(it.date, it.startTime, it.endTime);
+      return { h125: acc.h125 + m.h125, h200: acc.h200 + m.h200 };
+    },
+    { h125: 0, h200: 0 }
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-28 pt-6 animate-fade-in">
@@ -105,6 +113,22 @@ export default function AstreinteView({ onBack, showToast }) {
           <div>
             <p className="font-display text-2xl font-extrabold text-[#2b7fff] tabular-nums">{formatDuration(monthTotalH)}</p>
             <p className="text-[#929ba2] text-xs">ce mois</p>
+          </div>
+        </div>
+      )}
+
+      {/* Détail des heures majorées, sous le total */}
+      {items.length > 0 && (
+        <div className="grid grid-cols-2 gap-2.5 -mt-1.5 mb-4">
+          <div className="bg-[#15191c] border border-[#272d32] rounded-xl px-4 py-3 text-center">
+            <p className="font-display text-xl font-extrabold text-[#f5a524] tabular-nums">{formatDuration(monthMaj.h125)}</p>
+            <p className="text-[#929ba2] text-xs">majorées à 125 %</p>
+            <p className="text-[#7d868d] text-[10px] mt-0.5">semaine et samedi</p>
+          </div>
+          <div className="bg-[#15191c] border border-[#272d32] rounded-xl px-4 py-3 text-center">
+            <p className="font-display text-xl font-extrabold text-[#ff5d5d] tabular-nums">{formatDuration(monthMaj.h200)}</p>
+            <p className="text-[#929ba2] text-xs">majorées à 200 %</p>
+            <p className="text-[#7d868d] text-[10px] mt-0.5">dimanche et jours fériés</p>
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ import AddSiteModal from "./AddSiteModal";
 import MapPreview from "./MapPreview";
 import EmptyState from "../shared/EmptyState";
 import Logo from "../shared/Logo";
+import ClientLogo from "../shared/ClientLogo";
 
 export default function SiteListView({ sites, allCount, search, setSearch, onOpen, onAdd, onDelete, onShowPotsBoue, onShowAdoucisseur, onShowChaudieres, onShowAstreinte, onShowMap, onShowSav, onShowFournisseur, isAdmin, canManageSites, onShowAdmin, onLogout }) {
   const [showAdd, setShowAdd] = useState(false);
@@ -186,6 +187,7 @@ export default function SiteListView({ sites, allCount, search, setSearch, onOpe
                   open ? "border-[#2b7fff]/40 bg-[#2b7fff]/5" : "border-[#272d32] bg-[#15191c] hover:border-[#3a4147]"
                 }`}
               >
+                <ClientLogo client={g.client} size={40} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-white font-bold text-base truncate">{g.client || "Sans client"}</span>
                   <span className="block text-[12px] text-[#7d868d]">
